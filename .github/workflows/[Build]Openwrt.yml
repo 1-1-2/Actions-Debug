@@ -72,6 +72,7 @@ jobs:
 
     - name: Load custom feeds
       run: |
+        echo "::notice::CONFIG_FILE=$CONFIG_FILE DIY_P2_SH=$DIY_P2_SH"
         [ -e $FEEDS_CONF ] && mv $FEEDS_CONF openwrt/feeds.conf.default
         chmod +x $DIY_P1_SH
         cd openwrt
