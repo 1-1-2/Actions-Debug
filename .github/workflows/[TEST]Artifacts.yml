@@ -1,0 +1,52 @@
+name: Artifacts(8k_video)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  one:
+    runs-on: ubuntu-latest
+    steps:
+    - run: echo 'content' > 1.txt
+
+    - name: Upload artifact directory
+      uses: actions/upload-artifact@main
+      with:
+        # name: artifacts
+        path: ${{ github.workspace }}
+
+  two:
+    runs-on: ubuntu-latest
+    steps:
+    - run: echo 'content' > 2.txt
+
+    - name: Upload artifact directory
+      uses: actions/upload-artifact@main
+      with:
+        # name: artifacts
+        path: ${{ github.workspace }}
+
+  video:
+    runs-on: ubuntu-latest
+    steps:
+    - run: |
+        sudo apt -y install ffmpeg aria2
+        sudo curl -L https://yt-dl.org/downloads/latest/youtube-dl -o /usr/local/bin/youtube-dl
+        sudo chmod a+rx /usr/local/bin/youtube-dl
+        # youtube-dl https://www.youtube.com/watch?v=linlz7-Pnvw
+        touch /tmp/aria2_tmp.config
+        youtube-dl https://www.youtube.com/watch?v=linlz7-Pnvw --external-downloader aria2c --external-downloader-args "-x 16 -s 16 -k 1M --conf-path=/tmp/aria2_tmp.config"
+
+    - name: Upload artifact directory
+      uses: actions/upload-artifact@main
+      with:
+        name: 8k_video
+        path: ${{ github.workspace }}
+
+  clean:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: GitRML/delete-workflow-runs@main
+        with:
+          retain_days: 1
+          keep_minimum_runs: 2

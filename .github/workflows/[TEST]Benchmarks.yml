@@ -1,0 +1,77 @@
+name: Run Benchmark
+
+on:
+  workflow_dispatch:
+    inputs:
+      Selection:
+        description: 'UnixBench|LemonBench|YABS|bench.sh'
+        required: false
+        default: 'UnixBench'
+      ssh:
+        description: '结束后执行SSH调试(true|false)'
+        required: false
+        default: 'false'
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Run Benchmark
+      run: |
+        mkdir $HOME/result
+        echo "RESULT_DIR=$HOME/result" >> $GITHUB_ENV
+        echo "FILE_DATE=_$(date +"%Y%m%d%H%M")" >> $GITHUB_ENV
+
+        # 忽略大小写
+        shopt -s nocasematch
+        run_select=${{ github.event.inputs.Selection }}
+        if [[ ${run_select} == UnixBench* ]]; then
+            echo "[UnixBench] https://github.com/aliyun/byte-unixbench"
+            echo "[UnixBench] Start..."
+            wget https://github.com/aliyun/byte-unixbench/releases/download/v5.1.6/UnixBench-5.1.6.tar.gz
+            tar -zxvf UnixBench-5.1.6.tar.gz
+            cd UnixBench-5.1.6/UnixBench
+            ./Run
+
+            # 复制测试结果
+            echo [Result] @ ./results/*
+            cp ./results/* $HOME/result/
+        elif [[ ${run_select} == LemonBench* ]]; then
+            echo "[LemonBench] https://blog.ilemonrain.com/linux/LemonBench.html"
+            echo "[LemonBench] Start..."
+            curl -fsSL http://ilemonra.in/LemonBenchIntl | sudo bash -s full
+
+            # 复制测试结果
+            sudo cp /root/LemonBench.Result.txt $HOME/result/
+            echo [Result] @ $HOME/LemonBench.Result.txt
+        elif [[ ${run_select} == YABS* ]]; then
+            echo "[YABS] https://github.com/masonr/yet-another-bench-script"
+            echo "[YABS] Start..."
+            curl -sL yabs.sh | bash | tee $HOME/result/yabs.sh.Result.txt
+        elif [[ ${run_select} == bench.sh* ]]; then
+            echo "[bench.sh] https://github.com/teddysun/across/blob/master/bench.sh"
+            echo "[bench.sh] Start..."
+            curl -Lso- bench.sh | bash | tee $HOME/result/bench.sh.Result.txt
+        # elif [[ ${run_select} == ZBench* ]]; then
+        #     echo "[ZBench] Start..."
+        #     wget -N --no-check-certificate https://raw.githubusercontent.com/FunctionClub/ZBench/master/ZBench-CN.sh
+        #     echo -e "Github Actions\ny\nn\n" | sudo bash ZBench-CN.sh
+
+        #     # 复制测试结果
+        #     echo  [Result] @ /root/report.html
+        #     sudo cp /root/report.html $HOME/result
+        else
+            echo "[啥玩意儿？] ${run_select}"
+        fi
+
+    - name: Debug
+      uses: mxschmitt/action-tmate@v3.11
+      if: ${{ (github.event.inputs.ssh == 'true' && github.event.inputs.ssh != 'false') || failure() }}
+      # timeout-minutes: 25
+
+    - name: Upload result
+      uses: actions/upload-artifact@main
+      if: ${{ success() }}
+      with:
+        name: ${{ github.event.inputs.Selection }}${{ env.FILE_DATE }}
+        path: ${{ env.RESULT_DIR }}
