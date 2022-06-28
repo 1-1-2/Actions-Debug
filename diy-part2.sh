@@ -21,8 +21,8 @@ cd ..
 echo '修改网关地址'
 sed -i 's/192.168.1.1/192.168.199.1/g' package/base-files/files/bin/config_generate
 
-# echo '修改时区'
-# sed -i "s/'UTC'/'CST-8'\n        set system.@system[-1].zonename='Asia\/Shanghai'/g" package/base-files/files/bin/config_generate
+echo '修改时区'
+sed -i "s/'UTC'/'CST-8'\n        set system.@system[-1].zonename='Asia\/Shanghai'/g" package/base-files/files/bin/config_generate
 
 echo '修改机器名称'
 sed -i 's/OpenWrt/N3D2/g' package/base-files/files/bin/config_generate
@@ -130,6 +130,7 @@ CONFIG_PACKAGE_luci-app-npc=y
 CONFIG_PACKAGE_luci-app-frpc=y
 # ----------luci-app-openclash
 CONFIG_PACKAGE_luci-app-openclash=y
+# CONFIG_PACKAGE_dnsmasq is not set
 # ----------network-firewall-ip6tables-ip6tables-mod-nat
 # CONFIG_PACKAGE_ip6tables-mod-nat=y
 # ----------luci-app-transmission
