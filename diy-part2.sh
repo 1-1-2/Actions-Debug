@@ -68,16 +68,16 @@ config_basic() {
     # 基础包和应用
     #=========================================
     cat >> .config << EOF
-luci-app-acl=y
-luci-app-advanced=y
-luci-app-advanced-reboot=y
-luci-app-ddns=y
-luci-app-statistics=y
-luci-app-store=y
-luci-app-upnp=y
-luci-app-wol=y
+CONFIG_PACKAGE_luci-app-acl=y
+CONFIG_PACKAGE_luci-app-advanced=y
+CONFIG_PACKAGE_luci-app-advanced-reboot=y
+CONFIG_PACKAGE_luci-app-ddns=y
+CONFIG_PACKAGE_luci-app-statistics=y
+CONFIG_PACKAGE_luci-app-store=y
+CONFIG_PACKAGE_luci-app-upnp=y
+CONFIG_PACKAGE_luci-app-wol=y
 # ----------automount
-PACKAGE_block-mount=y
+CONFIG_PACKAGE_block-mount=y
 CONFIG_PACKAGE_kmod-fs-ext4=y
 CONFIG_PACKAGE_kmod-fs-exfat=y
 CONFIG_PACKAGE_kmod-fs-ntfs=y
