@@ -10,6 +10,11 @@
 # Description: OpenWrt DIY script part 2 (After Update feeds)
 #
 
+#=========================================
+# Add packages
+#=========================================
+# nps
+echo '添加 luci-app-npc'
 cd package
 git clone https://github.com/lloyd18/luci-app-npc
 git clone https://github.com/lloyd18/npc
@@ -93,7 +98,6 @@ config_basic() {
     cat >> .config << EOF
 CONFIG_PACKAGE_luci-app-acl=y
 CONFIG_PACKAGE_luci-app-advanced=y
-CONFIG_PACKAGE_luci-app-advanced-reboot=y
 CONFIG_PACKAGE_luci-app-ddns=y
 CONFIG_PACKAGE_luci-app-statistics=y
 CONFIG_PACKAGE_luci-app-store=y
