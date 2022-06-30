@@ -13,6 +13,13 @@
 #=========================================
 # Add packages
 #=========================================
+# luci-app-turboacc
+echo '借来 luci-app-turboacc'
+svn co https://github.com/immortalwrt/luci/trunk/applications/luci-app-turboacc feeds/luci/applications/luci-app-turboacc
+echo '连带 turboacc 的依赖 dnsforwarder'
+svn co https://github.com/immortalwrt/packages/trunk/net/dnsforwarder feeds/packages/net/dnsforwarder
+./scripts/feeds update -i luci packages
+./scripts/feeds install -a
 # nps
 echo '添加 luci-app-npc'
 cd package
@@ -103,6 +110,7 @@ CONFIG_PACKAGE_luci-app-statistics=y
 CONFIG_PACKAGE_luci-app-store=y
 CONFIG_PACKAGE_luci-app-upnp=y
 CONFIG_PACKAGE_luci-app-wol=y
+CONFIG_PACKAGE_luci-app-turboacc=y
 # ----------automount
 CONFIG_PACKAGE_block-mount=y
 CONFIG_PACKAGE_kmod-fs-ext4=y
