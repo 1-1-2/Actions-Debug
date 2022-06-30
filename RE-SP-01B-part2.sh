@@ -38,19 +38,22 @@ target_inf() {
     echo -n '[diy-part2.sh]当前路径：' && pwd
     echo -n '[diy-part2.sh]当前物理路径：' && pwd -P
 
-    # fix1
+    # load dts
     echo '载入 mt7621_jdcloud_re-sp-01b.dts'
-    cd ..
-    cp -v 'dts/[openwrt]mt7621_jdcloud_re-sp-01b.dts' openwrt/target/linux/ramips/dts/mt7621_jdcloud_re-sp-01b.dts
-    cd -
+    curl --retry 3 -s 'https://gist.githubusercontent.com/1-1-2/335dbc8e138f39fb8fe6243d424fe476/raw/mt7621_jdcloud_re-sp-01b.dts' -o target/linux/ramips/dts/mt7621_jdcloud_re-sp-01b.dts
 
     # fix2 + fix4.2
     echo '修改 mt7621.mk'
     sed -i '/Device\/adslr_g7/i\define Device\/jdcloud_re-sp-01b\n  \$(Device\/dsa-migration)\n  \$(Device\/uimage-lzma-loader)\n  IMAGE_SIZE := 32448k\n  DEVICE_VENDOR := JDCloud\n  DEVICE_MODEL := RE-SP-01B\n  DEVICE_PACKAGES := kmod-fs-ext4 kmod-mt7603 kmod-mt7615e kmod-mt7615-firmware kmod-sdhci-mt7620 kmod-usb3 wpad-openssl\nendef\nTARGET_DEVICES += jdcloud_re-sp-01b\n\n' target/linux/ramips/image/mt7621.mk
 
-    # fix3
+    # fix3 + fix5.2
     echo '修改 02-network'
-    sed -i '/lenovo,newifi-d1|\\/i\        jdcloud,re-sp-01b|\\' target/linux/ramips/mt7621/base-files/etc/board.d/02_network
+    sed -i -e '/lenovo,newifi-d1|\\/i\        jdcloud,re-sp-01b|\\' -e '/ramips_setup_macs/,/}/{/ampedwireless,ally-00x19k/i\        jdcloud,re-sp-01b)\n\t\tlan_mac=$(mtd_get_mac_ascii u-boot-env mac)\n\t\twan_mac=$(macaddr_add "$lan_mac" 1)\n\t\tlabel_mac=$lan_mac\n\t\t;;
+    }' target/linux/ramips/mt7621/base-files/etc/board.d/02_network
+
+    # fix5.1
+    echo '修改 system.sh'
+    sed -i 's#key"'\''=//p'\''#& \| head -n1#' package/base-files/files/lib/functions/system.sh
 
     #=========================================
     # Target System
