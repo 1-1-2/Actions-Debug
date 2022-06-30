@@ -13,6 +13,11 @@
 #=========================================
 # Add packages
 #=========================================
+echo '借来 luci-app-vsftpd'
+svn co https://github.com/coolsnowwolf/luci/trunk/applications/luci-app-vsftpd feeds/luci/applications/luci-app-vsftpd
+sed -i 's/vsftpd-alt/vsftpd/' feeds/luci/applications/luci-app-vsftpd/Makefile
+./scripts/feeds update -i luci
+./scripts/feeds install -p luci luci-app-vsftpd
 # nps
 echo '添加 luci-app-npc'
 cd package
@@ -150,6 +155,8 @@ config_func() {
     # 功能包
     #=========================================
     cat >> .config << EOF
+# ----------luci-app-vsftpd
+CONFIG_PACKAGE_luci-app-vsftpd=y
 # ----------luci-app-aria2
 CONFIG_PACKAGE_luci-app-aria2=y
 # ----------luci-app-VPNs
