@@ -35,9 +35,14 @@ target_inf() {
     #=========================================
     # Patch for model RE-SP-01B
     #=========================================
+    echo -n '[diy-part2.sh]当前路径：' && pwd
+    echo -n '[diy-part2.sh]当前物理路径：' && pwd -P
+
     # fix1
     echo '载入 mt7621_jdcloud_re-sp-01b.dts'
-    cp -v 'dts/[openwrt]mt7621_jdcloud_re-sp-01b.dts' target/linux/ramips/dts/mt7621_jdcloud_re-sp-01b.dts
+    cd ..
+    cp -v 'dts/[openwrt]mt7621_jdcloud_re-sp-01b.dts' openwrt/target/linux/ramips/dts/mt7621_jdcloud_re-sp-01b.dts
+    cd -
 
     # fix2 + fix4.2
     echo '修改 mt7621.mk'
