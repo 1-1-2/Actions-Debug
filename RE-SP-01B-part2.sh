@@ -13,27 +13,32 @@
 #=========================================
 # Add packages
 #=========================================
+# luci-app-vsftpd
 echo '借来 luci-app-vsftpd'
 svn co https://github.com/coolsnowwolf/luci/trunk/applications/luci-app-vsftpd feeds/luci/applications/luci-app-vsftpd
 echo '连带依赖 vsftpd-alt'
 svn co https://github.com/coolsnowwolf/lede/trunk/package/lean/vsftpd-alt package/lean/vsftpd-alt
 ./scripts/feeds update -i luci
 ./scripts/feeds install -p luci luci-app-vsftpd
-# 顺便修改一些菜单入口到luci-app-vsftpd定义的nas一级中
+# luci-app-vsftpd定义了一级菜单"nas"，顺便修改一些菜单入口到该菜单
 sed -i 's/services/nas/' feeds/luci/applications/luci-app-ksmbd/root/usr/share/luci/menu.d/luci-app-ksmbd.json
 sed -i 's/services/nas/' feeds/luci/applications/luci-app-hd-idle/root/usr/share/luci/menu.d/luci-app-hd-idle.json
 sed -i 's/services/nas/' feeds/luci/applications/luci-app-aria2/root/usr/share/luci/menu.d/luci-app-aria2.json
 sed -i 's/services/nas/' feeds/luci/applications/luci-app-transmission/root/usr/share/luci/menu.d/luci-app-transmission.json
-# nps
+
 cd package
+
+# LuCI support for NPS Client
 echo '添加 luci-app-npc'
 svn co https://github.com/Hyy2001X/AutoBuild-Packages/trunk/luci-app-npc
 # git clone https://github.com/lloyd18/luci-app-npc
 git clone https://github.com/lloyd18/npc
 
+# 自动挂载
 echo '添加 automount'
 svn co https://github.com/coolsnowwolf/lede/trunk/package/lean/automount lean/automount
 sed -i 's/ +ntfs3-mount//' lean/automount/Makefile      # 去掉不存在的包
+
 cd ..
 
 #=========================================
