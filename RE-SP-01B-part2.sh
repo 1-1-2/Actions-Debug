@@ -13,6 +13,17 @@
 #=========================================
 # Add packages
 #=========================================
+echo '借来 luci-app-vsftpd'
+svn co https://github.com/coolsnowwolf/luci/trunk/applications/luci-app-vsftpd feeds/luci/applications/luci-app-vsftpd
+echo '连带依赖 vsftpd-alt'
+svn co https://github.com/coolsnowwolf/lede/trunk/package/lean/vsftpd-alt package/lean/vsftpd-alt
+./scripts/feeds update -i luci
+./scripts/feeds install -p luci luci-app-vsftpd
+# 顺便修改一些菜单入口到luci-app-vsftpd定义的nas一级中
+sed -i 's/services/nas/' feeds/luci/applications/luci-app-ksmbd/root/usr/share/luci/menu.d/luci-app-ksmbd.json
+sed -i 's/services/nas/' feeds/luci/applications/luci-app-hd-idle/root/usr/share/luci/menu.d/luci-app-hd-idle.json
+sed -i 's/services/nas/' feeds/luci/applications/luci-app-aria2/root/usr/share/luci/menu.d/luci-app-aria2.json
+sed -i 's/services/nas/' feeds/luci/applications/luci-app-transmission/root/usr/share/luci/menu.d/luci-app-transmission.json
 # nps
 cd package
 echo '添加 luci-app-npc'
@@ -156,6 +167,8 @@ config_func() {
     # 功能包
     #=========================================
     cat >> .config << EOF
+# ----------luci-app-vsftpd
+CONFIG_PACKAGE_luci-app-vsftpd=y
 # ----------luci-app-aria2
 CONFIG_PACKAGE_luci-app-aria2=y
 # ----------luci-app-VPNs
