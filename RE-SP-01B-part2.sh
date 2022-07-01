@@ -15,7 +15,8 @@
 #=========================================
 echo '借来 luci-app-vsftpd'
 svn co https://github.com/coolsnowwolf/luci/trunk/applications/luci-app-vsftpd feeds/luci/applications/luci-app-vsftpd
-sed -i 's/vsftpd-alt/vsftpd/' feeds/luci/applications/luci-app-vsftpd/Makefile
+echo '连带依赖 vsftpd-alt'
+svn co https://github.com/coolsnowwolf/lede/trunk/package/lean/vsftpd-alt package/lean/vsftpd-alt
 ./scripts/feeds update -i luci
 ./scripts/feeds install -p luci luci-app-vsftpd
 # nps
