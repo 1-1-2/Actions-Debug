@@ -14,10 +14,15 @@
 # Add packages
 #=========================================
 # nps
-echo '添加 luci-app-npc'
 cd package
-git clone https://github.com/lloyd18/luci-app-npc
+echo '添加 luci-app-npc'
+svn co https://github.com/Hyy2001X/AutoBuild-Packages/trunk/luci-app-npc
+# git clone https://github.com/lloyd18/luci-app-npc
 git clone https://github.com/lloyd18/npc
+
+echo '添加 automount'
+svn co https://github.com/coolsnowwolf/lede/trunk/package/lean/automount lean/automount
+sed -i 's/ +ntfs3-mount//' lean/automount/Makefile      # 去掉不存在的包
 cd ..
 
 #=========================================
@@ -100,6 +105,7 @@ CONFIG_PACKAGE_luci-app-acl=y
 CONFIG_PACKAGE_luci-app-advanced=y
 CONFIG_PACKAGE_luci-app-ddns=y
 CONFIG_PACKAGE_luci-app-statistics=y
+CONFIG_PACKAGE_luci-app-nlbwmon=y
 CONFIG_PACKAGE_luci-app-store=y
 CONFIG_PACKAGE_luci-app-upnp=y
 CONFIG_PACKAGE_luci-app-wol=y
