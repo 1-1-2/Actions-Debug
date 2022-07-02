@@ -126,6 +126,7 @@ CONFIG_PACKAGE_luci-app-store=y
 CONFIG_PACKAGE_luci-app-upnp=y
 CONFIG_PACKAGE_luci-app-wol=y
 # ----------automount
+CONFIG_PACKAGE_automount=y
 CONFIG_PACKAGE_block-mount=y
 CONFIG_PACKAGE_kmod-fs-ext4=y
 CONFIG_PACKAGE_kmod-fs-exfat=y
