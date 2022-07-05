@@ -44,11 +44,11 @@ mod_default_config(){
 }
 
 target_inf() {
+    echo -n '[diy-part2.sh]当前表显路径：' && pwd
+    echo -n '[diy-part2.sh]当前物理路径：' && pwd -P
     #=========================================
     # Patch for model RE-SP-01B
     #=========================================
-    echo -n '[diy-part2.sh]当前表显路径：' && pwd
-    echo -n '[diy-part2.sh]当前物理路径：' && pwd -P
 
     # load dts
     echo '载入 mt7621_jdcloud_re-sp-01b.dts'
@@ -81,6 +81,7 @@ EOF
 #--------------------------------------------------------------------------------
 #↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓下面写配置编写逻辑↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
 
+add_packages
 # 清理重开，从零开始
 rm -fv ./.config*
 target_inf
