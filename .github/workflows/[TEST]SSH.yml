@@ -2,6 +2,9 @@ name: SSH
 
 on:
   workflow_dispatch:
+    
+env:
+  REPO_URL: https://github.com/openwrt/openwrt
 
 jobs:
   tmate:
