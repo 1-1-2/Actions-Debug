@@ -18,5 +18,4 @@ jobs:
     - uses: GitRML/delete-workflow-runs@main
       if: ${{ always() }}
       with:
-        retain_days: 1
         keep_minimum_runs: 3

@@ -29,7 +29,7 @@ env:
   FEEDS_CONF: feeds.conf.default
   CONFIG_FILE: .config
   DIY_P1_SH: diy-part1.sh
-  DIY_P2_SH: RE-SP-01B-part2.sh
+  DIY_P2_SH: diy-part2/[OpenWrt]RE-SP-01B-part2.sh
   UPLOAD_BIN_DIR: true
   UPLOAD_FIRMWARE: true
   UPLOAD_COWTRANSFER: true
@@ -85,7 +85,7 @@ jobs:
 
     - name: Load custom configuration
       run: |
-        [ -e files ] && mv files openwrt/files
+        [ -e files ] && echo '已启用files大法！' && mv files openwrt/files
         [ -e $CONFIG_FILE ] && mv $CONFIG_FILE openwrt/.config
         chmod +x $DIY_P2_SH
         cd openwrt
@@ -107,6 +107,9 @@ jobs:
       run: |
         cd openwrt
         make defconfig
+        echo ============diff.config=============
+        ./scripts/diffconfig.sh
+        echo ====================================
 
         # 下载包，如若出错生成警告
         # 一轮八线程
