@@ -40,7 +40,7 @@ add_packages(){
 			cp "$1" tmp/before_mod.bak
 			sed -i 's/services/nas/' "$1"
 			echo "将$(basename "$1" | cut -d. -f1)从services移动到了nas"
-			diff before_mod.bak "$1"
+			diff tmp/before_mod.bak "$1"
 			echo '---EOF---'
 		else
 			echo 没找到$1
