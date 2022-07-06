@@ -32,8 +32,6 @@ add_packages(){
 	svn co https://github.com/coolsnowwolf/luci/trunk/applications/luci-app-vsftpd feeds/luci/applications/luci-app-vsftpd
 	echo '还有依赖 vsftpd-alt'
 	svn co https://github.com/coolsnowwolf/lede/trunk/package/lean/vsftpd-alt package/lean/vsftpd-alt
-	./scripts/feeds update -i luci
-	./scripts/feeds install -p luci luci-app-vsftpd
 
 	exist_sed(){
 		if [ -f "$1" ]; then
@@ -68,7 +66,11 @@ add_packages(){
 
     # 解决无法正确识别出简体中文语言包的问题
     # ref: https://github.com/ysc3839/luci-proto-minieap/pull/2
-    find -type d -path '*/po/zh-cn' | xargs dirname | xargs -I'{}' ln -fs {}/zh-cn {}/zh_Hans
+    find -type d -path '*/po/zh-cn' | xargs dirname | xargs -I'{}' ln -vfs {}/zh-cn {}/zh_Hans
+
+    # 最后更新一下索引和安装一下包
+	./scripts/feeds update -i luci
+	./scripts/feeds install -p luci luci-app-vsftpd
 }
 
 config_clean() {
