@@ -37,7 +37,7 @@ add_packages(){
 	echo '从天灵那里借个 luci-app-nps'
 	svn co https://github.com/immortalwrt/luci/trunk/applications/luci-app-nps feeds/luci/applications/luci-app-nps
 	echo '还有依赖 nps'
-	svn co https://github.com/immortalwrt/packages/trunk/net/nps package/net/nps
+	svn co https://github.com/immortalwrt/packages/trunk/net/nps feeds/packages/net/nps
 
 	exist_sed(){
 		if [ -f "$1" ]; then
@@ -75,7 +75,7 @@ add_packages(){
     find -type d -path '*/po/zh-cn' | xargs dirname | xargs -I'{}' ln -vfs {}/zh-cn {}/zh_Hans
 
     # 最后更新一下索引和安装一下包
-	./scripts/feeds update -i luci
+	./scripts/feeds update -i luci packages
 	./scripts/feeds install -a
 }
 
