@@ -138,6 +138,8 @@ CONFIG_PACKAGE_luci-app-ksmbd=y
 CONFIG_PACKAGE_luci-app-commands=y
 # ----------luci-app-qos
 CONFIG_PACKAGE_luci-app-qos=y
+# ----------luci-app-nft-qos
+CONFIG_PACKAGE_luci-app-nft-qos=y
 # ----------luci-app-eqos
 CONFIG_PACKAGE_luci-app-eqos=y
 # ----------luci-app-sqm
