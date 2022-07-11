@@ -25,6 +25,7 @@ add_packages(){
 	# 两种方式（没有本质上的区别）：
 	# M1. 从别的(类)OpenWrt源码仓库部分借用，放到feeds文件夹(通常为feeds/luci)
 	# M2. 拉取专门的luci包到package文件夹
+	# M3. 修正语言名（zh-cn -> zh_Hans），更新feeds索引，安装feeds
 	#=========================================
 	
 	# M1
@@ -32,6 +33,11 @@ add_packages(){
 	svn co https://github.com/coolsnowwolf/luci/trunk/applications/luci-app-vsftpd feeds/luci/applications/luci-app-vsftpd
 	echo '还有依赖 vsftpd-alt'
 	svn co https://github.com/coolsnowwolf/lede/trunk/package/lean/vsftpd-alt package/lean/vsftpd-alt
+
+	echo '从天灵那里借个 luci-app-nps'
+	svn co https://github.com/immortalwrt/luci/trunk/applications/luci-app-nps feeds/luci/applications/luci-app-nps
+	echo '还有依赖 nps'
+	svn co https://github.com/immortalwrt/packages/trunk/net/nps package/net/nps
 
 	exist_sed(){
 		if [ -f "$1" ]; then
@@ -53,10 +59,10 @@ add_packages(){
 	# M2
 	cd package
 
-	echo '从 Hyy2001X 那里借一个改好的 luci-app-npc'
-	svn co https://github.com/Hyy2001X/AutoBuild-Packages/trunk/luci-app-npc
-	# git clone https://github.com/lloyd18/luci-app-npc
-	git clone https://github.com/lloyd18/npc
+	# echo '从 Hyy2001X 那里借一个改好的 luci-app-npc'
+	# svn co https://github.com/Hyy2001X/AutoBuild-Packages/trunk/luci-app-npc
+	# # git clone https://github.com/lloyd18/luci-app-npc
+	# git clone https://github.com/lloyd18/npc
 
 	echo '从 lean 那里借一个自动外存挂载 automount'
 	svn co https://github.com/coolsnowwolf/lede/trunk/package/lean/automount lean/automount
@@ -70,7 +76,7 @@ add_packages(){
 
     # 最后更新一下索引和安装一下包
 	./scripts/feeds update -i luci
-	./scripts/feeds install -p luci luci-app-vsftpd
+	./scripts/feeds install -a
 }
 
 config_clean() {
@@ -156,7 +162,7 @@ CONFIG_PACKAGE_luci-app-vsftpd=y
 # ----------luci-app-aria2
 CONFIG_PACKAGE_luci-app-aria2=y
 # ----------luci-app-VPNs
-CONFIG_PACKAGE_luci-app-npc=y
+CONFIG_PACKAGE_luci-app-nps=y
 CONFIG_PACKAGE_luci-app-frpc=y
 # ----------luci-app-openclash
 CONFIG_PACKAGE_luci-app-openclash=y
