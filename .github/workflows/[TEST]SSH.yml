@@ -11,11 +11,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
-
-    - name: Setup tmate session
-      uses: mxschmitt/action-tmate@v3
-
+    - uses: mxschmitt/action-tmate@v3
     - uses: GitRML/delete-workflow-runs@main
       if: ${{ always() }}
-      with:
-        keep_minimum_runs: 3
