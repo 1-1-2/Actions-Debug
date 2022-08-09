@@ -78,7 +78,7 @@ jobs:
       id: compile
       run: |
         cd armbian
-        sudo ./compile.sh BOARD=$ARMBIAN_BOARD BRANCH=$ARMBIAN_BRANCH RELEASE=focal BUILD_MINIMAL=yes BUILD_DESKTOP=no KERNEL_ONLY=no KERNEL_CONFIGURE=no COMPRESS_OUTPUTIMAGE=sha,gpg,img USE_TORRENT=no
+        sudo ./compile.sh BOARD=$ARMBIAN_BOARD BRANCH=$ARMBIAN_BRANCH RELEASE=focal BUILD_MINIMAL=yes BUILD_DESKTOP=no KERNEL_ONLY=no KERNEL_CONFIGURE=no COMPRESS_OUTPUTIMAGE=sha,gpg,img USE_TORRENT=no DOWNLOAD_MIRROR=china
         # 存点变量待用
         cd output/images
         echo "IMAGE_PATH=$PWD" >> $GITHUB_ENV
