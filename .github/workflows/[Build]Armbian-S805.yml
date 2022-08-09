@@ -42,7 +42,6 @@ env:
   UPLOAD_COWTRANSFER: true
   UPLOAD_WETRANSFER: true
   UPLOAD_RELEASE: false
-  TZ: Asia/Shanghai
 
 jobs:
   build:
@@ -58,8 +57,7 @@ jobs:
         # sudo -E apt-get -qq autoremove --purge
         # sudo -E apt-get -qq clean
         # docker image prune -a -f
-        apt-get -y -qq install git
-        sudo timedatectl set-timezone "$TZ"
+        sudo -E apt-get -y -qq install git
         sudo mkdir -p /workdir
         sudo chown $USER:$GROUPS /workdir
 
@@ -72,18 +70,15 @@ jobs:
         git clone $REPO_URL -b ${{ github.event.inputs.repo_branch }} armbian
         ln -sf /workdir/armbian $GITHUB_WORKSPACE/armbian
 
-    - name: SSH connection to Actions
-      uses: P3TERX/ssh2actions@v1.0.0
+    - name: SSH Configuration
+      uses: mxschmitt/action-tmate@v3.11
       if: (github.event.inputs.ssh == 'true' && github.event.inputs.ssh != 'false') || contains(github.event.action, 'ssh')
-      env:
-        TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-        TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
 
     - name: Compile the firmware
       id: compile
       run: |
         cd armbian
-        sudo ./compile.sh BOARD=$ARMBIAN_BOARD BRANCH=$ARMBIAN_BRANCH RELEASE=focal BUILD_MINIMAL=yes BUILD_DESKTOP=no KERNEL_ONLY=no KERNEL_CONFIGURE=no COMPRESS_OUTPUTIMAGE=sha,gpg,img EXTRAWIFI=no
+        sudo ./compile.sh BOARD=$ARMBIAN_BOARD BRANCH=$ARMBIAN_BRANCH RELEASE=focal BUILD_MINIMAL=yes BUILD_DESKTOP=no KERNEL_ONLY=no KERNEL_CONFIGURE=no COMPRESS_OUTPUTIMAGE=sha,gpg,img USE_TORRENT=no
         # 存点变量待用
         cd output/images
         echo "IMAGE_PATH=$PWD" >> $GITHUB_ENV
