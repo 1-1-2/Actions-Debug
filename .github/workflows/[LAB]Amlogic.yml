@@ -1,0 +1,50 @@
+#
+# Copyright (c) 2019-2020 P3TERX <https://p3terx.com>
+#
+# This is free software, licensed under the MIT License.
+# See /LICENSE for more information.
+#
+# https://github.com/P3TERX/Actions-OpenWrt
+# Description: Build OpenWrt using GitHub Actions
+#
+# https://zhuanlan.zhihu.com/p/431751132
+# Description: 玩客云折腾记录（一）：编译 ArmBian 系统
+#
+
+name: Amlogic Testbed
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Initialize
+      run: |
+        sudo -E apt-get -y -qq install git build-essential zlib1g-dev liblzma-dev python-magic
+        sudo mkdir -p /workdir
+        sudo chown $USER:$GROUPS /workdir
+
+        cd /workdir
+        git clone https://github.com/rampageX/firmware-mod-kit
+        cd firmware-mod-kit/src
+        ./configure && make
+
+        cd /workdir
+        git clone https://github.com/natinusala/linux-amlogic-toolkit
+        cd linux-amlogic-toolkit
+        ./bin/build
+
+        cd /workdir
+        curl -fsSL git.io/file-transfer | sh
+
+        df -hT $PWD
+        # ln -sf /workdir/armbian $GITHUB_WORKSPACE/armbian
+
+    - name: enable SSH
+      uses: mxschmitt/action-tmate@v3.11
+
+    - name: Delete workflow runs
+      uses: GitRML/delete-workflow-runs@main
