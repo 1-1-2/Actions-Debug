@@ -26,19 +26,35 @@ jobs:
         sudo -E apt-get -y -qq install git build-essential zlib1g-dev liblzma-dev python-magic
         sudo mkdir -p /workdir
         sudo chown $USER:$GROUPS /workdir
-
         cd /workdir
-        git clone https://github.com/rampageX/firmware-mod-kit
-        cd firmware-mod-kit/src
-        ./configure && make
 
-        cd /workdir
-        git clone https://github.com/natinusala/linux-amlogic-toolkit
-        cd linux-amlogic-toolkit
-        ./bin/build
+        # cd /workdir
+        ( git clone https://github.com/rampageX/firmware-mod-kit
+          cd firmware-mod-kit/src
+          ( ./configure && make ) | tee ../fmk.log
+        ) &
 
-        cd /workdir
-        curl -fsSL git.io/file-transfer | sh
+        # cd /workdir
+        ( git clone https://github.com/natinusala/linux-amlogic-toolkit amlogic-toolkit-natinusala
+          cd amlogic-toolkit-natinusala
+          ./bin/build | tee ../amlkit-natinusala.log
+        ) &
+
+        # cd /workdir
+        ( git clone https://github.com/Eliminater74/linux-amlogic-toolkit amlogic-toolkit-Eliminater74
+          cd amlogic-toolkit-Eliminater74
+          ./bin/build | tee ../amlkit-Eliminater74.log
+        ) &
+
+        # cd /workdir
+        ( git clone https://github.com/syvaidya/linux-amlogic-toolkit amlogic-toolkit-syvaidya
+          cd amlogic-toolkit-syvaidya
+          ./bin/build | tee ../amlkit-syvaidya.log
+        ) &
+
+        # cd /workdir
+        curl -fsSL git.io/file-transfer | sh | tee file-transfer.log
+        wait
 
         df -hT $PWD
         # ln -sf /workdir/armbian $GITHUB_WORKSPACE/armbian
