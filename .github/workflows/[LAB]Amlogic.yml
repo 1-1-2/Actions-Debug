@@ -19,13 +19,14 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      log_dir: /workdir/setup_logs
 
     steps:
     - name: Initialize
       run: |
         sudo -E apt-get -y -qq install git build-essential zlib1g-dev liblzma-dev python-magic
 
-        log_dir='/workdir/setup_logs'
         sudo mkdir -p ${log_dir}
         sudo chown -R $USER:$GROUPS /workdir
         cd /workdir
