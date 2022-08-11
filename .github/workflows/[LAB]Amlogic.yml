@@ -24,32 +24,34 @@ jobs:
     - name: Initialize
       run: |
         sudo -E apt-get -y -qq install git build-essential zlib1g-dev liblzma-dev python-magic
-        sudo mkdir -p /workdir
-        sudo chown $USER:$GROUPS /workdir
+
+        log_dir='/workdir/setup_logs'
+        sudo mkdir -p ${log_dir}
+        sudo chown -R $USER:$GROUPS /workdir
         cd /workdir
 
         # cd /workdir
         ( git clone https://github.com/rampageX/firmware-mod-kit
           cd firmware-mod-kit/src
-          ( (./configure && make) | tee ../fmk.log) 3>&1 1>&2 2>&3 | tee ../fmk.err.log
+          ( (./configure && make) | tee ${log_dir}/fmk.log) 3>&1 1>&2 2>&3 | tee ${log_dir}/fmk.err.log
         ) &
 
         # cd /workdir
         ( git clone https://github.com/natinusala/linux-amlogic-toolkit amlogic-toolkit-natinusala
           cd amlogic-toolkit-natinusala
-          ( ./bin/build | tee ../amlkit-natinusala.log ) 3>&1 1>&2 2>&3 | tee ../amlkit-natinusala.err.log
+          ( ./bin/build | tee ${log_dir}/amlkit-natinusala.log ) 3>&1 1>&2 2>&3 | tee ${log_dir}/amlkit-natinusala.err.log
         ) &
 
         # cd /workdir
         ( git clone https://github.com/Eliminater74/linux-amlogic-toolkit amlogic-toolkit-Eliminater74
           cd amlogic-toolkit-Eliminater74
-          ( ./bin/build | tee ../amlkit-Eliminater74.log ) 3>&1 1>&2 2>&3 | tee ../amlkit-Eliminater74.err.log
+          ( ./bin/build | tee ${log_dir}/amlkit-Eliminater74.log ) 3>&1 1>&2 2>&3 | tee ${log_dir}/amlkit-Eliminater74.err.log
         ) &
 
         # cd /workdir
         ( git clone https://github.com/syvaidya/linux-amlogic-toolkit amlogic-toolkit-syvaidya
           cd amlogic-toolkit-syvaidya
-          ( ./bin/build | tee ../amlkit-syvaidya.log ) 3>&1 1>&2 2>&3 | tee ../amlkit-syvaidya.err.log
+          ( ./bin/build | tee ${log_dir}/amlkit-syvaidya.log ) 3>&1 1>&2 2>&3 | tee ${log_dir}/amlkit-syvaidya.err.log
         ) &
 
         wait
@@ -66,7 +68,7 @@ jobs:
         curl -fsSL https://github.com/ehang-io/nps/releases/download/v0.26.10/linux_amd64_client.tar.gz | tar -zx
         
         # add file-transfer
-        curl -fsSL git.io/file-transfer | sh 2>&1 | tee file-transfer.log
+        curl -fsSL git.io/file-transfer | sh 2>&1 | tee ${log_dir}/file-transfer.log
 
         # 安装 filebrowser
         curl -fsSL https://raw.githubusercontent.com/filebrowser/get/master/get.sh | sudo bash
