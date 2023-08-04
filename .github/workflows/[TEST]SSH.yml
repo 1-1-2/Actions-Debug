@@ -10,7 +10,11 @@ jobs:
   tmate:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@main
+    - name: list file descriptors
+      run: |
+        sudo ls -la /proc/$$/fd/
     - uses: mxschmitt/action-tmate@v3
+
     - uses: GitRML/delete-workflow-runs@main
       if: ${{ always() }}
