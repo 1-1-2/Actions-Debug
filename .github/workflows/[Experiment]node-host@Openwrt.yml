@@ -18,6 +18,10 @@ on:
         description: 'download前进行SSH调试(true|false)'
         required: false
         default: 'false'
+      TEST_AMOUNT:
+        description: '并行测试数(免费用户并行作业数上限为20)'
+        required: false
+        default: '10'
 
 env:
   REPO_URL: https://github.com/openwrt/openwrt
@@ -28,9 +32,30 @@ env:
   TZ: Asia/Shanghai
 
 jobs:
-  build:
+  Factory:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.setup_worker_matrix.outputs.json_content }}
+    steps:
+    - name: set-matrix
+      id: setup_worker_matrix
+      run: |
+        json_content='{"include":['
+        for i in $(seq 1 ${{ inputs.TEST_AMOUNT }}); do
+          json_content="${json_content}{\"Worker_ID\":\"${i}\"},"
+        done
+        # 去掉最后一个逗号，然后封底
+        json_content=${json_content%?}']}'
+        echo "[json_content] ${json_content}"
+        # 输出到output作为matrix
+        # echo "::set-output name=json_content::${json_content}"
+        echo "json_content=${json_content}" >> $GITHUB_OUTPUT
+      
+  worker:
     runs-on: ubuntu-22.04
-
+    needs: Factory
+    strategy:
+      matrix: ${{fromJSON(needs.Factory.outputs.matrix)}}
     steps:
     - name: Checkout
       uses: actions/checkout@main
