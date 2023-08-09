@@ -108,13 +108,29 @@ jobs:
     - name: Compile
       id: compile
       run: |
+        # 计时起点，启动打点计时器
+        start_time=$(date +%s)
+        ( while true; do echo "...Timer.$[ $(date +%s)-${start_time} ]s" >&2 && sleep 20; done ) &
+        TIMER_PID=$!
+
+        # 启动编译任务
         cd openwrt
         make -j1 V=s
         # 存点变量待用
         grep '^CONFIG_TARGET.*DEVICE.*=y' .config | sed -r 's/.*DEVICE_(.*)=y/\1/' > DEVICE_NAME
         [ -s DEVICE_NAME ] && echo "DEVICE_NAME=_$(cat DEVICE_NAME)" >> $GITHUB_ENV
         echo "FILE_DATE=_$(date +"%Y%m%d%H%M")" >> $GITHUB_ENV
-        mv .config bin/targets/*/*
+        # 复制配置文件到 bin/targets/[arch]/[subtarget]/ 目录，最终一并打包
+        SUBTARGET_FOLDER=$(realpath bin/targets/*/*)
+        cp -v .config ${SUBTARGET_FOLDER}/*
+
+        # 计时终点，关闭打点计时器
+        kill -15 $TIMER_PID
+        end_time=$(date +%s)
+        cost_time=$[ ${end_time}-${start_time} ]
+        echo "==============================================="
+        echo -ne "Start Time:\t${start_time}\nEnd Time:\t${end_time}\nCost Time:\t${cost_time}\n" | tee ${SUBTARGET_FOLDER}/Timer.log
+        echo "==============================================="
 
     - name: Check Space Usage
       if: (!cancelled())
