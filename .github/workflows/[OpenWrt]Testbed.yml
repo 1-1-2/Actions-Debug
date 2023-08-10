@@ -1,0 +1,178 @@
+#
+# Copyright (c) 2022-2023 1-1-2 <https://github.com/1-1-2/>
+#
+# This is free software, licensed under the MIT License.
+# See /LICENSE for more information.
+#
+# https://github.com/1-1-2/Actions-Debug
+# Description: OpenWrt Testbed with Toolchain loaded
+#
+
+name: Experiment - OpenWrt Testbed
+run-name: OpenWrt Testbed base on[${{ inputs.target }}, ${{ inputs.config_tag }}]
+
+on:
+  repository_dispatch:
+  workflow_dispatch:
+    inputs:
+      target:
+        type: choice
+        required: true
+        description: '基准设备'
+        default: 'Newifi3D2'
+        options:
+          - Newifi3D2
+          - RE-SP-01B
+      config_tag:
+        type: choice
+        required: true
+        description: '配置版本'
+        default: 'clean'
+        options:
+          - clean
+          - clean
+          - func
+          - test
+      commit_sha:
+        required: false
+        description: '使用指定的commit(可选)'
+        default: 'latest'
+
+env:
+  REPO_TAG: OpenWrt
+  REPO_USE: openwrt/openwrt
+  REPO_BRANCH: master
+  FEEDS_CONF: feeds.conf.default
+  CONFIG_FILE: .config
+  DIY_P1_SH: diy-part1.sh
+  UPLOAD_BIN_DIR: true
+  TZ: Asia/Shanghai
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@main
+
+    - name: IP check
+      run: wget -qO- --no-check-certificate https://raw.githubusercontent.com/spiritLHLS/ecs/main/qzcheck.sh | sudo bash -
+
+    - name: Initialization environment
+      env:
+        DEBIAN_FRONTEND: noninteractive
+      run: |
+        sudo rm -rf /etc/apt/sources.list.d/* /usr/share/dotnet /usr/local/lib/android /opt/ghc
+        sudo -E apt-get -qq update
+        sudo -E apt-get -qq install build-essential clang flex bison g++ gawk gcc-multilib g++-multilib gettext git libncurses-dev libssl-dev python3-distutils rsync unzip zlib1g-dev file wget
+        sudo -E apt-get -qq autoremove --purge
+        sudo -E apt-get -qq clean
+        docker image prune -a -f
+        sudo timedatectl set-timezone "$TZ"
+        sudo mkdir -p /workdir
+        sudo chown $USER:$GROUPS /workdir
+
+    - name: Clone source code
+      working-directory: /workdir
+      run: |
+        df -hT | tee /workdir/df.before
+
+        git clone https://github.com/$REPO_USE -b $REPO_BRANCH openwrt
+        ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
+
+        # 若指定了 commit
+        if [ "${{ inputs.commit_sha }}" != "latest" ]; then
+          cd openwrt
+          git checkout "${{ inputs.commit_sha }}"
+          cd ..
+          LATEST_SHA=$(curl "https://api.github.com/repos/$REPO_USE/commits/$REPO_BRANCH" | grep sha | head -n1 | cut -d\" -f4)
+          echo "::notice title=Using commit::[latest] https://github.com/$REPO_USE/tree/$LATEST_SHA"
+        else
+          echo "::notice title=Using commit::[specific] https://github.com/$REPO_USE/tree/${{ inputs.commit_sha }}"
+        fi
+
+    - name: Cache
+      uses: klever1988/cachewrtbuild@main
+      with:
+        ccache: 'false'
+        prefix: ${{ github.workspace }}/openwrt
+
+    - name: Load custom feeds
+      run: |
+        [ -e $FEEDS_CONF ] && mv $FEEDS_CONF openwrt/feeds.conf.default
+        chmod +x $DIY_P1_SH
+        cd openwrt
+        $GITHUB_WORKSPACE/$DIY_P1_SH
+
+    - name: Update feeds
+      run: cd openwrt && ./scripts/feeds update -a
+
+    - name: Install feeds
+      run: cd openwrt && ./scripts/feeds install -a
+
+    - name: Load custom configuration
+      run: |
+        if [ -e files ] ; then
+          echo "::notice title=files大法已启动！::[Custom files]https://openwrt.org/zh-cn/doc/howto/build#%E5%AE%9A%E5%88%B6%E6%96%87%E4%BB%B6"
+          mv -v files openwrt/files
+        fi
+        [ -e $CONFIG_FILE ] && mv -v $CONFIG_FILE openwrt/.config
+
+        DIY_P2_SH="diy-part2/[$REPO_TAG]${{ github.event.inputs.target }}-part2.sh"
+        chmod +x "${DIY_P2_SH}"
+        cd openwrt
+        # 调用脚本生成配置
+        "$GITHUB_WORKSPACE/${DIY_P2_SH}" ${{ github.event.inputs.config_tag }}
+        echo ==============.config===============
+        [ -e .config ] && cat .config || echo 'no default .config'
+        echo ====================================
+
+    - name: Download package
+      id: package
+      run: |
+        cd openwrt
+        make defconfig
+        echo ============diff.config=============
+        ./scripts/diffconfig.sh
+        echo ====================================
+
+        # 下载包，如若出错生成警告
+        # 一轮八线程
+        make download -j8 | tee make_download.log
+        grep 'ERROR:' make_download.log | xargs -i echo "::warning:: [Download Trial 1]" {}
+        find dl -size -1024c -exec ls -l {} \;
+        find dl -size -1024c -exec rm -f {} \;
+        # 二轮单线程
+        grep 'ERROR:' -q -m1 make_download.log && make download -j1 V=s | tee make_download.log
+        grep 'ERROR:' make_download.log | xargs -i echo "::warning:: [Download Trial 2]" {}
+        find dl -size -1024c -exec ls -l {} \;
+        find dl -size -1024c -exec rm -f {} \;
+
+    - name: Start SSH via ngrok
+      uses: P3TERX/ssh2actions@main
+      with:
+        mode: ngrok
+      env:
+        # jp, ap, us
+        NGROK_REGION: jp
+        NGROK_TOKEN: ${{ secrets.NGROK_TOKEN }}
+        SSH_PASSWORD: ${{ secrets.SSH_PASSWORD }}
+
+    - name: Check Space Usage
+      if: (!cancelled())
+      run: |
+        echo "=======================BEFORE========================"
+        cat /workdir/df.before
+        echo "========================AFTER========================"
+        df -hT
+
+        # 为下一步留个时间戳
+        echo "TimeStamp=$(date +"%Y%m%d-%H%M")" >> $GITHUB_ENV
+
+    - name: Upload bin directory
+      uses: actions/upload-artifact@main
+      if: (!cancelled()) && env.UPLOAD_BIN_DIR == 'true'
+      with:
+        name: OpenWrt_Testbed_bin_${{ env.TimeStamp }}
+        path: openwrt/bin
