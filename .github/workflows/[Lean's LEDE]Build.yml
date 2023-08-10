@@ -8,28 +8,46 @@
 # Description: Build OpenWrt using GitHub Actions
 #
 
-name: Lean's LEDE - RE-SP-01B
+name: Build Lean's LEDE
+run-name: Lean's LEDE [${{ inputs.target }}, ${{ inputs.config_tag }}]
 
 on:
   repository_dispatch:
   workflow_dispatch:
     inputs:
-      ssh:
-        description: 'download前进行SSH调试(true|false)'
-        required: false
-        default: 'false'
+      target:
+        type: choice
+        required: true
+        description: '目标设备'
+        default: 'Newifi3D2'
+        options:
+          - Newifi3D2
+          - WS1408
+          - RE-SP-01B
+          - HC5661
       config_tag:
-        description: '选择配置的版本(clean|basic|func|test)'
-        required: false
+        type: choice
+        required: true
+        description: '配置版本'
         default: 'func'
+        options:
+          - clean
+          - clean
+          - func
+          - test
+      ssh:
+        type: boolean
+        required: false
+        description: 'download前进行SSH调试'
+        default: false
 
 env:
+  REPO_TAG: Lean's LEDE
   REPO_URL: https://github.com/coolsnowwolf/lede
   REPO_BRANCH: master
   FEEDS_CONF: feeds.conf.default
   CONFIG_FILE: .config
   DIY_P1_SH: diy-part1.sh
-  DIY_P2_SH: diy-part2/[Lean's LEDE]RE-SP-01B-part2.sh
   UPLOAD_BIN_DIR: true
   UPLOAD_FIRMWARE: true
   UPLOAD_COWTRANSFER: true
@@ -44,10 +62,6 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@main
-
-    - name: Show config tag
-      run: |
-        echo "::warning:: [Build Type] Build with ${{ github.event.inputs.config_tag }} .config"
 
     - name: Initialization environment
       env:
@@ -70,6 +84,12 @@ jobs:
         git clone $REPO_URL -b $REPO_BRANCH openwrt
         ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
 
+    - name: Cache
+      uses: klever1988/cachewrtbuild@main
+      with:
+        ccache: 'false'
+        prefix: ${{ github.workspace }}/openwrt
+
     - name: Load custom feeds
       run: |
         [ -e $FEEDS_CONF ] && mv $FEEDS_CONF openwrt/feeds.conf.default
@@ -85,12 +105,14 @@ jobs:
 
     - name: Load custom configuration
       run: |
-        [ -e files ] && mv files openwrt/files
+        [ -e files ] && echo '已启用files大法！' && mv files openwrt/files
         [ -e $CONFIG_FILE ] && mv $CONFIG_FILE openwrt/.config
-        chmod +x "$DIY_P2_SH"
+
+        DIY_P2_SH="diy-part2/[$REPO_TAG]${{ github.event.inputs.target }}-part2.sh"
+        chmod +x "${DIY_P2_SH}"
         cd openwrt
         # 使用脚本生成配置
-        "$GITHUB_WORKSPACE/$DIY_P2_SH" ${{ github.event.inputs.config_tag }}
+        "$GITHUB_WORKSPACE/${DIY_P2_SH}" ${{ github.event.inputs.config_tag }}
         echo ==============.config===============
         [ -e .config ] && cat .config || echo 'no default .config'
         echo ====================================

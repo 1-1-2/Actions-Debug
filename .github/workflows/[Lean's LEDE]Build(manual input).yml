@@ -8,32 +8,38 @@
 # Description: Build OpenWrt using GitHub Actions
 #
 
-name: Lean's LEDE - WS1408
+name: Build Lean's LEDE - manual input
+run-name: Lean's LEDE [${{ inputs.config_file }}, ${{ inputs.diy_p2_sh }}]
 
 on:
   repository_dispatch:
   workflow_dispatch:
     inputs:
       ssh:
-        description: 'download前进行SSH调试(true|false)'
+        type: boolean
         required: false
-        default: 'false'
-      config_tag:
-        description: '选择配置的版本(clean|basic|func|test)'
+        description: 'download前进行SSH调试'
+        default: false
+      config_file:
+        description: 'Test Config filename'
         required: false
-        default: 'func'
+        default: '.config'
+      diy_p2_sh:
+        description: 'DIY Pt.Ⅱ filename'
+        required: false
+        default: 'diy-part2.sh'
 
 env:
   REPO_URL: https://github.com/coolsnowwolf/lede
   REPO_BRANCH: master
   FEEDS_CONF: feeds.conf.default
-  CONFIG_FILE: .config
+  CONFIG_FILE: ${{ github.event.inputs.config_file }}
   DIY_P1_SH: diy-part1.sh
-  DIY_P2_SH: diy-part2/[Lean's LEDE]WS1408-part2.sh
+  DIY_P2_SH: ${{ github.event.inputs.diy_p2_sh }}
   UPLOAD_BIN_DIR: true
-  UPLOAD_FIRMWARE: true
-  UPLOAD_COWTRANSFER: true
-  UPLOAD_WETRANSFER: true
+  UPLOAD_FIRMWARE: false
+  UPLOAD_COWTRANSFER: false
+  UPLOAD_WETRANSFER: false
   UPLOAD_RELEASE: false
   TZ: Asia/Shanghai
 
@@ -44,10 +50,6 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@main
-
-    - name: Show config tag
-      run: |
-        echo "::warning:: [Build Type] Build with ${{ github.event.inputs.config_tag }} .config"
 
     - name: Initialization environment
       env:
@@ -70,8 +72,15 @@ jobs:
         git clone $REPO_URL -b $REPO_BRANCH openwrt
         ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
 
+    - name: Cache
+      uses: klever1988/cachewrtbuild@main
+      with:
+        ccache: 'false'
+        prefix: ${{ github.workspace }}/openwrt
+
     - name: Load custom feeds
       run: |
+        echo "::notice::CONFIG_FILE=$CONFIG_FILE DIY_P2_SH=$DIY_P2_SH"
         [ -e $FEEDS_CONF ] && mv $FEEDS_CONF openwrt/feeds.conf.default
         chmod +x $DIY_P1_SH
         cd openwrt
@@ -85,15 +94,11 @@ jobs:
 
     - name: Load custom configuration
       run: |
-        [ -e files ] && mv files openwrt/files
+        [ -e files ] && echo '已启用files大法！' && mv files openwrt/files
         [ -e $CONFIG_FILE ] && mv $CONFIG_FILE openwrt/.config
-        chmod +x "$DIY_P2_SH"
+        chmod +x $DIY_P2_SH
         cd openwrt
-        # 使用脚本生成配置
-        "$GITHUB_WORKSPACE/$DIY_P2_SH" ${{ github.event.inputs.config_tag }}
-        echo ==============.config===============
-        [ -e .config ] && cat .config || echo 'no default .config'
-        echo ====================================
+        $GITHUB_WORKSPACE/$DIY_P2_SH
 
     - name: SSH connection to Actions
       uses: P3TERX/ssh2actions@v1.0.0
@@ -128,12 +133,11 @@ jobs:
       run: |
         cd openwrt
         echo -e "Try $(($(nproc)+1)) thread compile first..."
-        make -j $(($(nproc)+1)) || make -j1 || make -j1 V=s.
+        make -j $(($(nproc)+1)) || make -j1 || make -j1 V=s
         # 存点变量待用
         grep '^CONFIG_TARGET.*DEVICE.*=y' .config | sed -r 's/.*DEVICE_(.*)=y/\1/' > DEVICE_NAME
         [ -s DEVICE_NAME ] && echo "DEVICE_NAME=_$(cat DEVICE_NAME)" >> $GITHUB_ENV
         echo "FILE_DATE=_$(date +"%Y%m%d%H%M")" >> $GITHUB_ENV
-        mv .config bin/targets/*/*
 
     - name: Check space usage
       if: (!cancelled())
@@ -199,10 +203,10 @@ jobs:
         files: ${{ env.FIRMWARE }}/*
 
     - name: Delete workflow runs
-      uses: Mattraks/delete-workflow-runs@main
+      uses: GitRML/delete-workflow-runs@main
       with:
-        retain_days: 30
-        keep_minimum_runs: 5
+        retain_days: 1
+        keep_minimum_runs: 3
 
     - name: Remove old Releases
       uses: dev-drprasad/delete-older-releases@v0.1.0
