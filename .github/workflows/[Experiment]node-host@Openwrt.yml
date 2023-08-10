@@ -15,13 +15,15 @@ on:
   workflow_dispatch:
     inputs:
       ssh:
-        description: 'download前进行SSH调试(true|false)'
+        type: boolean
         required: false
-        default: 'false'
+        description: 'download前进行SSH调试'
+        default: false
       TEST_AMOUNT:
-        description: '并行测试数(免费用户并行作业数上限为20)'
+        type: number
         required: false
-        default: '10'
+        description: '并行测试数(免费用户并行作业数上限为20)'
+        default: 10
 
 env:
   REPO_URL: https://github.com/openwrt/openwrt
@@ -147,7 +149,7 @@ jobs:
         echo "FILE_DATE=_$(date +"%Y%m%d%H%M")" >> $GITHUB_ENV
         # 复制配置文件到 bin/targets/[arch]/[subtarget]/ 目录，最终一并打包
         SUBTARGET_FOLDER=$(realpath bin/targets/*/*)
-        cp -v .config ${SUBTARGET_FOLDER}/*
+        cp -v .config ${SUBTARGET_FOLDER}/
 
         # 计时终点，关闭打点计时器
         kill -15 $TIMER_PID
