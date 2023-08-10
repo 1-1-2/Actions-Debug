@@ -96,7 +96,7 @@ jobs:
     - name: Write Configuration
       run: |
         cd openwrt
-        cat > .config <<- EOF
+        cat | tee .config <<- EOF
         # CONFIG_USE_MKLIBS is not set
         CONFIG_TARGET_ramips=y
         CONFIG_TARGET_ramips_mt7621=y
