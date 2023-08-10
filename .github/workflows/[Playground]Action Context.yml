@@ -1,4 +1,4 @@
-name: Github Context Test
+name: Playground - Action Context
 
 on:
   workflow_dispatch:

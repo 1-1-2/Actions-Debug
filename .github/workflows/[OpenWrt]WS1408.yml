@@ -8,7 +8,8 @@
 # Description: Build OpenWrt using GitHub Actions
 #
 
-name: OpenWrt - WS1408
+name: Build OpenWrt - WS1408
+run-name: OpenWrt - WS1408 [${{ inputs.config_tag }}]
 
 on:
   repository_dispatch:

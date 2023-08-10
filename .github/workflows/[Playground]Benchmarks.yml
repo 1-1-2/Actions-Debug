@@ -1,4 +1,4 @@
-name: Run Benchmark
+name: Playground - Benchmarks
 
 on:
   workflow_dispatch:

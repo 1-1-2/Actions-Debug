@@ -1,4 +1,4 @@
-name: Matrix Test
+name: Playground - Action Matrix
 
 on:
   workflow_dispatch:

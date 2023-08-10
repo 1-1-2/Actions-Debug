@@ -1,4 +1,4 @@
-name: SSH
+name: Playground - SSH
 
 on:
   workflow_dispatch:

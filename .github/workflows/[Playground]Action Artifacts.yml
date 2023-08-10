@@ -1,4 +1,4 @@
-name: Artifacts(8k_video)
+name: Playground - Action Artifacts
 
 on:
   workflow_dispatch:

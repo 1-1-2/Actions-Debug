@@ -11,7 +11,7 @@
 # Description: 玩客云折腾记录（一）：编译 ArmBian 系统
 #
 
-name: Armbian Build - S805
+name: Build Armbian - S805
 
 on:
   repository_dispatch:

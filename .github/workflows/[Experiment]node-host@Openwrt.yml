@@ -8,7 +8,7 @@
 # Description: Build OpenWrt using GitHub Actions
 #
 
-name: node-host @ Openwrt
+name: Experiment - Build node-host@Openwrt
 
 on:
   repository_dispatch:
