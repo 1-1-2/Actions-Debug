@@ -1,0 +1,25 @@
+name: Mailll
+
+on:
+  workflow_dispatch:
+    
+jobs:
+  job:
+    runs-on: ubuntu-latest
+    steps:
+    - id: pre
+      run: |
+        echo 'Just testing.' > /tmp/10086.txt
+
+    - uses: dawidd6/action-send-mail@v3
+      with:
+        server_address: smtp.gmail.com
+        server_port: 465
+        secure: true
+        username: ${{secrets.MAIL_USERNAME}}
+        password: ${{secrets.MAIL_PASSWORD}}
+        from: GitHub Action Mailll
+        to: ${{secrets.MAIL_TO}}
+        cc: ${{secrets.MAIL_CC}}
+        subject: Testbed's Miao[Preparation ${{ steps.pre.outcome }}]
+        body: file:///tmp/10086.txt
