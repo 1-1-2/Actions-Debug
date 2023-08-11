@@ -50,7 +50,7 @@ jobs:
       if: steps.ngrok.conclusion == 'success' || steps.ngrok.conclusion == 'success'
 
     - name: bg Keepalive
-      if: inputs.background == 'true'
+      if: inputs.background == true
       run: |
         while [[ -S ${TMATE_SOCK} ]]; do
             sleep 5
