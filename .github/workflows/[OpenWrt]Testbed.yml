@@ -73,27 +73,6 @@ jobs:
         sudo mkdir -p /workdir
         sudo chown $USER:$GROUPS /workdir
 
-        # SSH短命令
-        cat << "EOF" >> ~/.bash_profile
-        alias grep='grep --color=auto'
-        eval "$(dircolors)"
-        alias l='ls -CF'
-        alias la='ls -A'
-        alias ll='ls -alF'
-        alias ls='ls --color=auto'
-        alias iftop='iftop -m 100m'
-        EOF
-
-        # 使能上下键历史命令匹配
-        cat >> ~/.inputrc << EOF
-        "\e[A": history-search-backward
-        "\e[B": history-search-forward
-
-        # auto complete ignoring case
-        set show-all-if-ambiguous on
-        set completion-ignore-case on
-        EOF
-
     - name: Clone source code
       working-directory: /workdir
       run: |
@@ -169,14 +148,28 @@ jobs:
         find dl -size -1024c -exec ls -l {} \;
         find dl -size -1024c -exec rm -f {} \;
 
+    - name: Start SSH via ngrok
+      if: (!cancelled())
+      id: ssh
+      uses: 1-1-2/SSH2Actions@main
+      with:
+        mode: ngrok
+      env:
+        IN_BACKGROUND: true
+        # jp, ap, us
+        NGROK_REGION: jp
+        NGROK_TOKEN: ${{ secrets.NGROK_TOKEN }}
+        SSH_PASSWORD: ${{ secrets.SSH_PASSWORD }}
+
     - name: Setting up tools
+      id: setup
       run: |
         cd openwrt
         make -j $(($(nproc)+1)) tools/install || make -j1 tools/install || make -j1 V=s tools/install
         make -j $(($(nproc)+1)) toolchain/install || make -j1 toolchain/install || make -j1 V=s toolchain/install
         echo
 
-    - name: Send mail
+    - name: Send notification mail
       uses: dawidd6/action-send-mail@v3
       with:
         server_address: smtp.gmail.com
@@ -186,17 +179,28 @@ jobs:
         password: ${{secrets.MAIL_PASSWORD}}
         from: OpenWrt Testbed
         to: ${{secrets.MAIL_TO}}
-        subject: Testbed's Ready
+        cc: ${{secrets.MAIL_CC}}
+        subject: Testbed's SSH online[Set up tools ${{ steps.setup.outcome }}]
+        body: file:///tmp/conn.inf
 
-    - name: Start SSH via ngrok
-      uses: P3TERX/ssh2actions@main
-      with:
-        mode: ngrok
-      env:
-        # jp, ap, us
-        NGROK_REGION: jp
-        NGROK_TOKEN: ${{ secrets.NGROK_TOKEN }}
-        SSH_PASSWORD: ${{ secrets.SSH_PASSWORD }}
+    - name: Keepalive
+      run: |
+        # while [[ -S ${TMATE_SOCK} ]]; do
+        #     sleep 5
+        #     echo
+        #     if [[ -e "/tmp/continue" ]]; then
+        #         echo -e "[INFO] Continue to the next step."
+        #         exit 0
+        #     fi
+        # done
+        while [[ -n $(ps aux | grep ngrok) ]]; do
+            sleep 5
+            echo
+            if [[ -e "/tmp/continue" ]]; then
+                echo -e "[INFO] Continue to the next step."
+                exit 0
+            fi
+        done
 
     - name: Check Space Usage
       if: (!cancelled())
