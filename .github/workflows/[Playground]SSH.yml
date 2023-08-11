@@ -2,19 +2,72 @@ name: Playground - SSH
 
 on:
   workflow_dispatch:
-    
-env:
-  REPO_URL: https://github.com/openwrt/openwrt
+    inputs:
+      backend:
+        type: choice
+        required: false
+        description: '选择后端'
+        default: 'tmate'
+        options:
+          - ngrok
+          - tmate
+      background:
+        type: boolean
+        description: '后台运行'
+        default: false
 
 jobs:
-  tmate:
+  SSH:
     runs-on: ubuntu-latest
+    env:
+      IN_BACKGROUND: ${{ inputs.background }}
     steps:
-    - uses: actions/checkout@main
-    - name: list file descriptors
+    - name: File Descriptors
       run: |
         sudo ls -la /proc/$$/fd/
-    - uses: mxschmitt/action-tmate@v3
+
+    - name: Start SSH via tmate
+      id: tmate
+      if: inputs.backend == 'tmate'
+      uses: 1-1-2/SSH2Actions@main
+      with:
+        mode: tmate
+
+
+    - name: Start SSH via ngrok
+      id: ngrok
+      if: inputs.backend == 'ngrok'
+      uses: 1-1-2/SSH2Actions@main
+      with:
+        mode: ngrok
+      env:
+        # jp, ap, us
+        NGROK_REGION: jp
+        NGROK_TOKEN: ${{ secrets.NGROK_TOKEN }}
+        SSH_PASSWORD: ${{ secrets.SSH_PASSWORD }}
+
+    - run: cat /tmp/conn.inf
+      if: steps.ngrok.conclusion == 'success' || steps.ngrok.conclusion == 'success'
+
+    - name: bg Keepalive
+      if: inputs.background == 'true'
+      run: |
+        while [[ -S ${TMATE_SOCK} ]]; do
+            sleep 5
+            echo
+            if [[ -e "/tmp/continue" ]]; then
+                echo -e "[INFO] Continue to the next step."
+                exit 0
+            fi
+        done
+        while [[ -n $(ps aux | grep ngrok) ]]; do
+            sleep 5
+            echo
+            if [[ -e "/tmp/continue" ]]; then
+                echo -e "[INFO] Continue to the next step."
+                exit 0
+            fi
+        done
 
     - uses: GitRML/delete-workflow-runs@main
       if: ${{ always() }}
