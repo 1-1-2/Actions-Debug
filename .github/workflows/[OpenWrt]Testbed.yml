@@ -73,6 +73,18 @@ jobs:
         sudo mkdir -p /workdir
         sudo chown $USER:$GROUPS /workdir
 
+    - name: Start SSH via ngrok
+      id: ssh
+      uses: 1-1-2/SSH2Actions@main
+      with:
+        mode: ngrok
+      env:
+        IN_BACKGROUND: true
+        # jp, ap, us
+        NGROK_REGION: jp
+        NGROK_TOKEN: ${{ secrets.NGROK_TOKEN }}
+        SSH_PASSWORD: ${{ secrets.SSH_PASSWORD }}
+
     - name: Clone source code
       working-directory: /workdir
       run: |
@@ -147,18 +159,6 @@ jobs:
         grep 'ERROR:' make_download.log | xargs -i echo "::warning:: [Download Trial 2]" {}
         find dl -size -1024c -exec ls -l {} \;
         find dl -size -1024c -exec rm -f {} \;
-
-    - name: Start SSH via ngrok
-      id: ssh
-      uses: 1-1-2/SSH2Actions@main
-      with:
-        mode: ngrok
-      env:
-        IN_BACKGROUND: true
-        # jp, ap, us
-        NGROK_REGION: jp
-        NGROK_TOKEN: ${{ secrets.NGROK_TOKEN }}
-        SSH_PASSWORD: ${{ secrets.SSH_PASSWORD }}
 
     - name: Setting up tools
       id: setup
