@@ -34,9 +34,18 @@ on:
           - func
           - test
       commit_sha:
+        type: string
         required: false
         description: '使用指定的commit(可选)'
         default: 'latest'
+      install_tool:
+        type: boolean
+        description: '预编译tool'
+        default: true
+      install_toolchain:
+        type: boolean
+        description: '预编译toolchain'
+        default: true
 
 env:
   REPO_TAG: OpenWrt
@@ -160,12 +169,21 @@ jobs:
         find dl -size -1024c -exec ls -l {} \;
         find dl -size -1024c -exec rm -f {} \;
 
-    - name: Setting up tools
-      id: setup
+    - name: Setting up tool
+      id: tool
+      if: inputs.install_tool
       continue-on-error: true
       run: |
         cd openwrt
         make -j $(($(nproc)+1)) tools/install || make -j1 tools/install || make -j1 V=s tools/install
+        echo
+
+    - name: Setting up toolchain
+      id: toolchain
+      if: inputs.install_toolchain
+      continue-on-error: true
+      run: |
+        cd openwrt
         make -j $(($(nproc)+1)) toolchain/install || make -j1 toolchain/install || make -j1 V=s toolchain/install
         echo
 
@@ -180,7 +198,7 @@ jobs:
         from: OpenWrt Testbed
         to: ${{secrets.MAIL_TO}}
         cc: ${{secrets.MAIL_CC}}
-        subject: Testbed's SSH online[Set up tools ${{ steps.setup.outcome }}]
+        subject: Testbed's Ready[tool ${{ steps.tool.outcome }}, toolchain ${{ steps.toolchain.outcome }}]
         body: file:///tmp/conn.inf
 
     - name: Keepalive
