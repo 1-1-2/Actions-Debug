@@ -30,7 +30,7 @@ on:
         default: 'clean'
         options:
           - clean
-          - clean
+          - basic
           - func
           - test
       commit_sha:
