@@ -64,12 +64,15 @@ jobs:
           export -p
           echo '==============EOF=============='
 
-          echo "TimeStamp=$(date +"%Y%m%d-%H%M")" >> $GITHUB_ENV
+          echo '========= Archive Home========='
+          du $HOME -akd1 | sort -n | awk '$1 < 10240' | cut -f 2- | tar -cf home_$USER.tar -T -
           echo "USER=$USER" >> $GITHUB_ENV
-          echo "HOME=$HOME" >> $GITHUB_ENV
+          echo "TGZ_FILE=$PWD/home_$USER.tar" >> $GITHUB_ENV
+          echo '==============EOF=============='
+          echo "TimeStamp=$(date +"%Y%m%d-%H%M")" >> $GITHUB_ENV
 
       - name: Upload User Homedir file
         uses: actions/upload-artifact@main
         with:
           name: home_${{ env.USER }}
-          path: ${{ env.HOME }}
+          path: ${{ env.TGZ_FILE }}
