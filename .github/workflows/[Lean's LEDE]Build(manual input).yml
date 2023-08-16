@@ -9,7 +9,7 @@
 #
 
 name: Build Lean's LEDE - manual input
-run-name: Lean's LEDE [${{ inputs.config_file }}, ${{ inputs.diy_p2_sh }}]
+run-name: Lean's LEDE [${{ inputs.config_file }}, ${{ inputs.diy_p2_name }}]
 
 on:
   repository_dispatch:
@@ -21,11 +21,11 @@ on:
         description: 'download前进行SSH调试'
         default: false
       config_file:
-        description: 'Test Config filename'
+        description: '根目录下配置文件的文件名（先加载）'
         required: false
         default: '.config'
-      diy_p2_sh:
-        description: 'DIY Pt.Ⅱ filename'
+      diy_p2_name:
+        description: 'diy-part2目录中的文件名（后执行）'
         required: false
         default: 'diy-part2.sh'
 
@@ -35,7 +35,7 @@ env:
   FEEDS_CONF: feeds.conf.default
   CONFIG_FILE: ${{ github.event.inputs.config_file }}
   DIY_P1_SH: diy-part1.sh
-  DIY_P2_SH: ${{ github.event.inputs.diy_p2_sh }}
+  DIY_P2_FILENAME: ${{ github.event.inputs.diy_p2_name }}
   UPLOAD_BIN_DIR: true
   UPLOAD_FIRMWARE: false
   UPLOAD_COWTRANSFER: false
@@ -96,9 +96,10 @@ jobs:
       run: |
         [ -e files ] && echo '已启用files大法！' && mv files openwrt/files
         [ -e $CONFIG_FILE ] && mv $CONFIG_FILE openwrt/.config
-        chmod +x $DIY_P2_SH
+        DIY_P2_SH="diy-part2/$DIY_P2_FILENAME"
+        chmod +x "$DIY_P2_SH"
         cd openwrt
-        $GITHUB_WORKSPACE/$DIY_P2_SH
+        "$GITHUB_WORKSPACE/$DIY_P2_SH"
 
     - name: SSH connection to Actions
       uses: P3TERX/ssh2actions@v1.0.0
