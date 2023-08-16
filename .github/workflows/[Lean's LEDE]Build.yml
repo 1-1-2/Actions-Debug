@@ -25,6 +25,7 @@ on:
           - WS1408
           - RE-SP-01B
           - HC5661
+          - ThunderCloud
       config_tag:
         type: choice
         required: true
