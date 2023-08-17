@@ -1,0 +1,321 @@
+#
+# Copyright (c) 2019-2020 P3TERX <https://p3terx.com>
+#
+# This is free software, licensed under the MIT License.
+# See /LICENSE for more information.
+#
+# https://github.com/P3TERX/Actions-OpenWrt
+# Description: Build OpenWrt using GitHub Actions
+#
+
+name: Build WRTs
+run-name: ${{ inputs.CONFIG_FILENAME != '' && "inputs.CONFIG_FILENAME[${{ inputs.repo_choice }}@${{ inputs.commit_sha }}]" || inputs.target_choice[ inputs.repo_choice @ inputs.commit_sha , inputs.config_tag] }}
+
+on:
+  repository_dispatch:
+  workflow_dispatch:
+    inputs:
+      repo_choice:
+        type: choice
+        required: true
+        description: '选择源码库'
+        default: 'openwrt/openwrt'
+        options:
+          - coolsnowwolf/lede
+          - openwrt/openwrt
+          - immortalwrt/immortalwrt
+      REPO_BRANCH:
+        description: '使用分支'
+        required: false
+        default: 'master'
+      commit_sha:
+        description: '指定commit sha(可选)'
+        required: false
+        default: 'latest'
+      target_choice:
+        type: choice
+        required: true
+        description: '选择目标设备'
+        default: 'Newifi3D2'
+        options:
+          - RE-SP-01B
+          - WS1408
+          - ThunderCloud
+          - Newifi3D2
+          - HC5661
+      config_tag:
+        type: choice
+        required: true
+        description: '选择配置版本'
+        default: 'func'
+        options:
+          - clean
+          - basic
+          - func
+          - test
+      CONFIG_FILENAME:
+        description: '指定配置(将忽略设备和配置选择)'
+        required: false
+        default: ''
+      use_cache:
+        description: '启用缓存'
+        required: false
+        default: true
+        type: boolean
+      ssh_one:
+        description: '编译前进行SSH调试'
+        required: false
+        default: false
+        type: boolean
+      ssh_two:
+        description: '编译后进行SSH调试'
+        required: false
+        default: false
+        type: boolean
+
+env:
+  REPO_URL: https://github.com/${{ inputs.repo_choice }}
+  FEEDS_CONF: feeds.conf.default
+  DIY_P1_SH: diy-part1.sh
+  UPLOAD_BIN_DIR: true
+  UPLOAD_FIRMWARE: true
+  TZ: Asia/Shanghai
+
+jobs:
+  build:
+    runs-on: ubuntu-20.04
+
+    steps:
+    - uses: actions/checkout@main
+
+    - name: Initialize Environment
+      env:
+        DEBIAN_FRONTEND: noninteractive
+      run: |
+        sudo rm -rf /etc/apt/sources.list.d/* /usr/share/dotnet /usr/local/lib/android /opt/ghc
+        sudo -E apt-get -qq update
+        sudo -E apt-get -qq install $(curl -fsSL git.io/depends-ubuntu-2004)
+        sudo -E apt-get -qq autoremove --purge
+        sudo -E apt-get -qq clean
+        docker image prune -a -f
+        sudo timedatectl set-timezone "$TZ"
+        sudo mkdir -p /workdir
+        sudo chown $USER:$GROUPS /workdir
+
+    - name: Clone Source Code
+      working-directory: /workdir
+      run: |
+        df -hT | tee /workdir/df.before
+
+        # for diy-part2
+        REPO_TAG=`basename $REPO_URL`
+        echo "REPO_TAG=$REPO_TAG" >> $GITHUB_ENV
+
+        git clone $REPO_URL -b ${{ inputs.REPO_BRANCH }} openwrt
+        ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
+
+        # 若指定了 commit 提个醒
+        if [ "$USE_COMMIT_SHA" == "latest" ]; then
+          LATEST_SHA=$(curl "https://api.github.com/repos/$REPO_USE/commits/$REPO_BRANCH" | grep sha | head -n1 | cut -d\" -f4)
+          echo "::notice title=Using commit::[latest] https://github.com/$REPO_USE/tree/$LATEST_SHA"
+        else
+          echo "::notice title=Using commit::[specific] https://github.com/$REPO_USE/tree/$USE_COMMIT_SHA"
+        fi
+        
+    - uses: klever1988/cachewrtbuild@main
+      if: inputs.use_cache
+      with:
+        ccache: 'false'
+        prefix: ${{ github.workspace }}/openwrt
+
+    - name: DIY-Ⅰ(feeds)
+      run: |
+        if [ -e $FEEDS_CONF ] ; then
+          cp -vf $FEEDS_CONF openwrt/feeds.conf.default
+          已加载自定义 feeds.conf.default
+        fi
+
+        chmod +x "$DIY_P1_SH"
+        cd openwrt
+        "$GITHUB_WORKSPACE/$DIY_P1_SH"
+
+    - name: Update Feeds
+      run: cd openwrt && ./scripts/feeds update -a
+
+    - name: Install Feeds
+      run: cd openwrt && ./scripts/feeds install -a
+
+    - name: DIY-Ⅱ(Configure Custom Scripts)
+      run: |
+        # load files if exist.
+        if [ -e files ] ; then
+          echo '库中存在files文件夹，已启动[files挪移大法](https://openwrt.org/zh-cn/doc/howto/build#%E5%AE%9A%E5%88%B6%E6%96%87%E4%BB%B6)！'
+          echo '::notice title=Image Type::已启用[files挪移大法](https://openwrt.org/zh-cn/doc/howto/build#%E5%AE%9A%E5%88%B6%E6%96%87%E4%BB%B6)！'
+          mv -v files openwrt/files
+        fi
+        
+        # load .config if exists.
+        if [ -e ${{ inputs.CONFIG_FILENAME }} ] ; then
+          echo '::notice title=Config Override::将${{ inputs.CONFIG_FILENAME }}移入，作为配置文件（DIY PART2.sh将被跳过）'
+          mv -v ${{ inputs.CONFIG_FILENAME }} openwrt/.config
+        else
+          # 运行指定型号的 part2.sh 脚本生成配置
+          DIY_P2_SH="diy-part2/${{ github.event.inputs.target_choice }}-part2.sh"
+          cd openwrt
+          bash "$GITHUB_WORKSPACE/${DIY_P2_SH}" ${{ inputs.config_tag }}
+        fi
+
+        cd /workdir/openwrt
+        echo ==============.config===============
+        [ -e .config ] && cat .config || (echo '.config NOT FOUND!' && exit 1)
+        echo ====================================
+
+    - name: Make Download
+      id: download
+      run: |
+        cd openwrt
+        make defconfig
+
+        # 分析配置文件是否包含补丁
+        subset_check=$(comm -23 <(sed '/# -/d' .config.old | sort | uniq) <(sort .config | uniq) | tee .notfound)
+        if [[ -z $subset_check ]]; then
+          echo "自定义配置(${{ inputs.config_tag }})是 .conifg 的子集"
+        else
+          echo "自定义配置(${{ inputs.config_tag }})不是 .conifg 的子集！以下配置行未在 .config 中找到"
+          cat .notfound
+          echo "=====================EOF======================="
+          echo "::warning title=Config fault::Custom config is not a subset of .config, please check..."
+        fi
+
+        # 从.config中截取型号信息
+        grep '^CONFIG_TARGET.*DEVICE.*=y' .config | sed -r 's/.*DEVICE_(.*)=y/\1/' > DEVICE_NAME
+        [ -s DEVICE_NAME ] && echo "::notice title=Target Name in .config:: $(cat DEVICE_NAME)" && echo "DEVICE_NAME=$(cat DEVICE_NAME)" >> $GITHUB_ENV
+        echo =============current .config DIFF default config=============
+        ./scripts/diffconfig.sh
+        echo ===========================EoDIFF============================
+
+        # 下载包，如若出错生成警告
+        # 一轮八线程
+        make download -j8 | tee make_download.log
+        grep 'ERROR:' make_download.log | xargs -i echo "::warning:: [Download Trial 1]" {}
+        find dl -size -1024c -exec ls -l {} \;
+        find dl -size -1024c -exec rm -f {} \;
+        # 二轮单线程
+        grep 'ERROR:' -q -m1 make_download.log && make download -j1 V=s | tee make_download.log
+        grep 'ERROR:' make_download.log | xargs -i echo "::warning:: [Download Trial 2]" {}
+        find dl -size -1024c -exec ls -l {} \;
+        find dl -size -1024c -exec rm -f {} \;
+
+    - name: SSH Before Compile
+      if: inputs.ssh_one
+      uses: 1-1-2/SSH2Actions@main
+      with:
+        mode: ngrok
+      env:
+        IN_BACKGROUND: false
+        # jp, ap, us
+        NGROK_REGION: jp
+        NGROK_TOKEN: ${{ secrets.NGROK_TOKEN }}
+        SSH_PASSWORD: ${{ secrets.SSH_PASSWORD }}
+
+    - name: Compile
+      id: compile
+      run: |
+        # 计时起点，启动打点计时器
+        start_time=$(date +%s)
+        ( while true; do echo "...Timer.$[ $(date +%s)-${start_time} ]s" >&2 && sleep 20; done ) &
+        TIMER_PID=$!
+
+        # 启动编译任务
+        cd openwrt
+        echo -e "Initiate Compilation. Try $(($(nproc)+1)) thread first..."
+        make -j $(($(nproc)+1)) || make -j1 || make -j1 V=s.
+        echo "TimeStamp=$(date +"%Y%m%d-%H%M")" >> $GITHUB_ENV
+        # 复制配置文件到 bin/targets/[arch]/[subtarget]/ 目录，最终一并打包
+        SUBTARGET_FOLDER=$(realpath bin/targets/*/*)
+        cp -v .config ${SUBTARGET_FOLDER}/
+
+        # 计时终点，关闭打点计时器
+        kill -15 $TIMER_PID
+        end_time=$(date +%s)
+        cost_time=$[ ${end_time}-${start_time} ]
+        echo "==============================================="
+        echo -ne "Start Time:\t${start_time}\nEnd Time:\t${end_time}\nCost Time:\t${cost_time}\n" | tee ${SUBTARGET_FOLDER}/Timer.log
+        echo "==============================================="
+
+    - name: Send Notification Mail
+      if: failure() || inputs.ssh_two
+      uses: dawidd6/action-send-mail@v3
+      with:
+        server_address: smtp.gmail.com
+        server_port: 465
+        secure: true
+        username: ${{secrets.MAIL_USERNAME}}
+        password: ${{secrets.MAIL_PASSWORD}}
+        from: \[Debug\]WRTs Build
+        to: ${{secrets.MAIL_TO}}
+        cc: ${{secrets.MAIL_CC}}
+        subject: SSH's Going Online[for compile ${{ steps.compile.outcome }}]
+        body: ${{ inputs.repo_choice }}, ${{ inputs.target_choice }}, ${{ inputs.config_tag }}
+
+    - name: SSH After Compile
+      if: failure() || inputs.ssh_two
+      uses: 1-1-2/SSH2Actions@main
+      with:
+        mode: ngrok
+      env:
+        IN_BACKGROUND: false
+        # jp, ap, us
+        NGROK_REGION: jp
+        NGROK_TOKEN: ${{ secrets.NGROK_TOKEN }}
+        SSH_PASSWORD: ${{ secrets.SSH_PASSWORD }}
+
+    - name: Keepalive Durint SSH
+      run: |
+        # while [[ -S ${TMATE_SOCK} ]]; do
+        #     sleep 5
+        #     echo
+        #     if [[ -e "/tmp/continue" ]]; then
+        #         echo -e "[INFO] Continue to the next step."
+        #         exit 0
+        #     fi
+        # done
+        while [[ -n $(ps aux | grep ngrok) ]]; do
+            sleep 5
+            echo
+            if [[ -e "/tmp/continue" ]]; then
+                echo -e "[INFO] Continue to the next step."
+                exit 0
+            fi
+        done
+
+    - name: Check Disk Usage
+      if: (!cancelled())
+      run: |
+        echo "=======================BEFORE========================"
+        cat /workdir/df.before
+        echo "========================AFTER========================"
+        df -hT
+
+    - name: Upload Bin Directory
+      uses: actions/upload-artifact@main
+      if: steps.compile.conclusion == 'success' && env.UPLOAD_BIN_DIR == 'true'
+      with:
+        name: OpenWrt_bin_${{ env.DEVICE_NAME }}_${{ env.TimeStamp }}
+        path: openwrt/bin
+
+    - name: Organize Files
+      id: organize
+      if: env.UPLOAD_FIRMWARE == 'true' && !cancelled()
+      run: |
+        cd openwrt/bin/targets/*/*
+        rm -rf packages
+        echo "FIRMWARE=$PWD" >> $GITHUB_ENV
+
+    - name: Upload Firmware Directory
+      uses: actions/upload-artifact@main
+      if: steps.organize.conclusion == 'success' && !cancelled()
+      with:
+        name: OpenWrt_firmware_${{ env.DEVICE_NAME }}_${{ env.TimeStamp }}
+        path: ${{ env.FIRMWARE }}
+
