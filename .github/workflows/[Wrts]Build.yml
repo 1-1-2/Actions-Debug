@@ -9,7 +9,7 @@
 #
 
 name: Build WRTs
-run-name: ${{ inputs.CONFIG_FILENAME != '' && "inputs.CONFIG_FILENAME[${{ inputs.repo_choice }}@${{ inputs.commit_sha }}]" || inputs.target_choice[ inputs.repo_choice @ inputs.commit_sha , inputs.config_tag] }}
+run-name: ${{ inputs.CONFIG_FILENAME != '' && format('{0}[{1}@{2}]', inputs.CONFIG_FILENAME, inputs.repo_choice, inputs.commit_sha) || format('{0}[{1}@{2},{3}]', inputs.target_choice, inputs.repo_choice, inputs.commit_sha, inputs.config_tag) }}
 
 on:
   repository_dispatch:
@@ -74,7 +74,7 @@ on:
         type: boolean
 
 env:
-  REPO_URL: https://github.com/${{ inputs.repo_choice }}
+  REPO_USE: ${{ inputs.repo_choice }}
   FEEDS_CONF: feeds.conf.default
   DIY_P1_SH: diy-part1.sh
   UPLOAD_BIN_DIR: true
@@ -108,18 +108,21 @@ jobs:
         df -hT | tee /workdir/df.before
 
         # for diy-part2
-        REPO_TAG=`basename $REPO_URL`
+        REPO_TAG=`basename $REPO_USE`
         echo "REPO_TAG=$REPO_TAG" >> $GITHUB_ENV
 
-        git clone $REPO_URL -b ${{ inputs.REPO_BRANCH }} openwrt
+        git clone https://github.com/$REPO_USE -b ${{ inputs.REPO_BRANCH }} openwrt
         ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
 
-        # 若指定了 commit 提个醒
-        if [ "$USE_COMMIT_SHA" == "latest" ]; then
-          LATEST_SHA=$(curl "https://api.github.com/repos/$REPO_USE/commits/$REPO_BRANCH" | grep sha | head -n1 | cut -d\" -f4)
-          echo "::notice title=Using commit::[latest] https://github.com/$REPO_USE/tree/$LATEST_SHA"
+        # 若指定了 commit
+        if [ ${{ inputs.commit_sha }} != "latest" ]; then
+          cd openwrt
+          git checkout ${{ inputs.commit_sha }}
+          cd ..
+          echo "::notice title=Using commit::[specific] https://github.com/$REPO_USE/tree/${{ inputs.commit_sha }}"
         else
-          echo "::notice title=Using commit::[specific] https://github.com/$REPO_USE/tree/$USE_COMMIT_SHA"
+          LATEST_SHA=$(curl "https://api.github.com/repos/$REPO_USE/commits/${{ inputs.REPO_BRANCH }}" | grep sha | head -n1 | cut -d\" -f4)
+          echo "::notice title=Using commit::[latest] https://github.com/$REPO_USE/tree/$LATEST_SHA"
         fi
         
     - uses: klever1988/cachewrtbuild@main
@@ -155,7 +158,7 @@ jobs:
         fi
         
         # load .config if exists.
-        if [ -e ${{ inputs.CONFIG_FILENAME }} ] ; then
+        if [ ${{ inputs.CONFIG_FILENAME }} -a -f ${{ inputs.CONFIG_FILENAME }} ] ; then
           echo '::notice title=Config Override::将${{ inputs.CONFIG_FILENAME }}移入，作为配置文件（DIY PART2.sh将被跳过）'
           mv -v ${{ inputs.CONFIG_FILENAME }} openwrt/.config
         else
