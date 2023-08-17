@@ -124,12 +124,6 @@ jobs:
           LATEST_SHA=$(curl "https://api.github.com/repos/$REPO_USE/commits/${{ inputs.REPO_BRANCH }}" | grep sha | head -n1 | cut -d\" -f4)
           echo "::notice title=Using commit::[latest] https://github.com/$REPO_USE/tree/$LATEST_SHA"
         fi
-        
-    - uses: klever1988/cachewrtbuild@main
-      if: inputs.use_cache
-      with:
-        ccache: 'false'
-        prefix: ${{ github.workspace }}/openwrt
 
     - name: DIY-Ⅰ(feeds)
       run: |
@@ -190,9 +184,11 @@ jobs:
           echo "::warning title=Config fault::Custom config is not a subset of .config, please check..."
         fi
 
-        # 从.config中截取型号信息
+        # 从.config中截取架构和型号信息
+        grep '^CONFIG_TARGET_[^_]*=y' .config | sed -r 's/.*TARGET_(.*)=y/\1/' > TARGET_ARCH
+        [ -s TARGET_ARCH ] && echo "::notice title=Target Name in .config:: $(cat TARGET_ARCH)" && echo "TARGET_ARCH=$(cat TARGET_ARCH)" >> $GITHUB_ENV
         grep '^CONFIG_TARGET.*DEVICE.*=y' .config | sed -r 's/.*DEVICE_(.*)=y/\1/' > DEVICE_NAME
-        [ -s DEVICE_NAME ] && echo "::notice title=Target Name in .config:: $(cat DEVICE_NAME)" && echo "DEVICE_NAME=$(cat DEVICE_NAME)" >> $GITHUB_ENV
+        [ -s DEVICE_NAME ] && echo "::notice title=Device Name in .config:: $(cat DEVICE_NAME)" && echo "DEVICE_NAME=$(cat DEVICE_NAME)" >> $GITHUB_ENV
         echo =============current .config DIFF default config=============
         ./scripts/diffconfig.sh
         echo ===========================EoDIFF============================
@@ -208,6 +204,13 @@ jobs:
         grep 'ERROR:' make_download.log | xargs -i echo "::warning:: [Download Trial 2]" {}
         find dl -size -1024c -exec ls -l {} \;
         find dl -size -1024c -exec rm -f {} \;
+
+    - uses: stupidloud/cachewrtbuild@main
+      if: inputs.use_cache
+      with:
+        ccache: 'false'
+        mixkey: ${{ format('{0}x{1}', env.TARGET_ARCH, inputs.REPO_TAG) }}
+        prefix: ${{ github.workspace }}/openwrt
 
     - name: SSH Before Compile
       if: inputs.ssh_one
