@@ -57,6 +57,10 @@ on:
         description: '指定配置(将忽略设备和配置选择)'
         required: false
         default: ''
+      MORE_INFO:
+        description: '任务备注'
+        required: false
+        default: ''
       use_cache:
         description: '启用缓存'
         required: false
@@ -83,8 +87,8 @@ env:
 
 jobs:
   build:
-    runs-on: ubuntu-20.04
-
+    runs-on: ubuntu-latest
+    name: ${{ inputs.MORE_INFO != '' && inputs.MORE_INFO || 'Build job' }}
     steps:
     - uses: actions/checkout@main
 
@@ -94,10 +98,10 @@ jobs:
       run: |
         sudo rm -rf /etc/apt/sources.list.d/* /usr/share/dotnet /usr/local/lib/android /opt/ghc
         sudo -E apt-get -qq update
-        sudo -E apt-get -qq install $(curl -fsSL git.io/depends-ubuntu-2004)
+        sudo -E apt-get -qq install $(curl -fsSL "https://gist.githubusercontent.com/1-1-2/38e424cd9da729f72fa4a495d23271ea/raw/lean's%2520lede")
         sudo -E apt-get -qq autoremove --purge
         sudo -E apt-get -qq clean
-        docker image prune -a -f
+        # docker image prune -a -f
         sudo timedatectl set-timezone "$TZ"
         sudo mkdir -p /workdir
         sudo chown $USER:$GROUPS /workdir
