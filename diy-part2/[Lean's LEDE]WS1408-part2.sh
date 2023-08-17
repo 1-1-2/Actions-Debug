@@ -12,7 +12,7 @@
 
 # 载入闪存对应的DIY脚本
 sh_dir=$(dirname "$0")
-. $sh_dir/OpenWrt-Configurator-ARM.sh
+. $sh_dir/Configurator-lede-ARM.sh
 
 mod_default_config(){
     #=========================================
