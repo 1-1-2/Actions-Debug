@@ -1,0 +1,51 @@
+name: Playground - N2N
+
+on:
+  workflow_dispatch:
+
+jobs:
+  SSH:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Init
+      env:
+        SSH_PASSWORD: ${{ secrets.SSH_PASSWORD }}
+      run: |
+        sudo mkdir -p /workdir
+        sudo chown $USER:$GROUPS /workdir
+
+        # Check secret - SSH password
+        if [[ -z "${SSH_PASSWORD}" ]]; then
+            echo -e "[ERROR] Please set 'SSH_PASSWORD' environment variable."
+            exit 3
+        else
+            echo -e "[INFO] Set user(${USER}) password ..."
+            echo -e "${SSH_PASSWORD}\n${SSH_PASSWORD}" | sudo passwd "${USER}"
+        fi
+
+        # install n2n
+        wget https://github.com/ntop/n2n/releases/download/3.1.1/n2n_3.1.1_amd64.deb
+        sudo dpkg -i n2n_3.1.1_amd64.deb
+        echo '==========n2n installed=========='
+        edge --help
+        echo '==========n2n installed=========='
+
+        # start n2n
+        echo 'starting n2n..'
+        nohup sudo edge -u 0 -g 0 -r -f ${{ secrets.N2N_ARG }} &> /workdir/n2n.log &
+        while [[ -z `grep 'created local tap device IP' /workdir/n2n.log` ]]; do
+          echo 'Waiting for DHCP finish..'
+          sleep 1
+        done
+        grep 'created local tap device IP' /workdir/n2n.log
+
+    - name: Keepalive
+      run: |
+        while [[ -n $(pgrep edge) ]]; do
+            if [[ -e "/tmp/continue" ]]; then
+                echo -e "[INFO] Continue to the next step."
+                exit 0
+            fi
+            echo -e '[INFO] N2N online, `touch /tmp/continue` to continue.'
+            sleep 5
+        done
