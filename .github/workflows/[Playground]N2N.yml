@@ -27,7 +27,7 @@ jobs:
         wget https://github.com/ntop/n2n/releases/download/3.1.1/n2n_3.1.1_amd64.deb
         sudo dpkg -i n2n_3.1.1_amd64.deb
         echo '==========n2n installed=========='
-        edge --help
+        edge -h
         echo '==========n2n installed=========='
 
         # start n2n
@@ -39,6 +39,22 @@ jobs:
         done
         grep 'created local tap device IP' /workdir/n2n.log
 
+        # 使能SSH短命令
+        cat << "EOF" >> ~/.bash_profile
+        . ~/.bashrc
+        alias iftop='iftop -m 100m'
+        EOF
+
+        # 使能上下键历史命令匹配
+        cat >> ~/.inputrc << EOF
+        "\e[A": history-search-backward
+        "\e[B": history-search-forward
+
+        # auto complete ignoring case
+        set show-all-if-ambiguous on
+        set completion-ignore-case on
+        EOF
+
     - name: Keepalive
       run: |
         while [[ -n $(pgrep edge) ]]; do
@@ -46,6 +62,6 @@ jobs:
                 echo -e "[INFO] Continue to the next step."
                 exit 0
             fi
-            echo -e '[INFO] N2N online, `touch /tmp/continue` to continue.'
+            echo '[INFO] N2N online, `touch /tmp/continue` to continue.'
             sleep 5
         done
