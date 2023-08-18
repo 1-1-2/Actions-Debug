@@ -107,6 +107,7 @@ jobs:
         sudo chown $USER:$GROUPS /workdir
 
     - name: Clone Source Code
+      id: clone
       working-directory: /workdir
       run: |
         df -hT | tee /workdir/df.before
@@ -189,10 +190,10 @@ jobs:
         fi
 
         # 从.config中截取架构和型号信息
-        grep '^CONFIG_TARGET_[^_]*=y' .config | sed -r 's/.*TARGET_(.*)=y/\1/' > TARGET_ARCH
-        [ -s TARGET_ARCH ] && echo "::notice title=Target Name in .config:: $(cat TARGET_ARCH)" && echo "TARGET_ARCH=$(cat TARGET_ARCH)" >> $GITHUB_ENV
+        grep '^CONFIG_TARGET_[^_]*=y' .config | sed -r 's/.*TARGET_(.*)=y/\1/' > ARCH_NAME
+        [ -s ARCH_NAME ] && echo "::notice title=Target Name in .config::$(cat ARCH_NAME)" && echo "ARCH_NAME=$(cat ARCH_NAME)" >> $GITHUB_OUTPUT
         grep '^CONFIG_TARGET.*DEVICE.*=y' .config | sed -r 's/.*DEVICE_(.*)=y/\1/' > DEVICE_NAME
-        [ -s DEVICE_NAME ] && echo "::notice title=Device Name in .config:: $(cat DEVICE_NAME)" && echo "DEVICE_NAME=$(cat DEVICE_NAME)" >> $GITHUB_ENV
+        [ -s DEVICE_NAME ] && echo "::notice title=Device Name in .config::$(cat DEVICE_NAME)" && echo "DEVICE_NAME=$(cat DEVICE_NAME)" >> $GITHUB_OUTPUT
         echo =============current .config DIFF default config=============
         ./scripts/diffconfig.sh
         echo ===========================EoDIFF============================
@@ -213,7 +214,7 @@ jobs:
       if: inputs.use_cache
       with:
         ccache: 'false'
-        mixkey: ${{ format('{0}x{1}', env.TARGET_ARCH, inputs.REPO_TAG) }}
+        mixkey: ${{ format('{0}x{1}', steps.download.outputs.ARCH_NAME, env.REPO_TAG) }}
         prefix: ${{ github.workspace }}/openwrt
 
     - name: SSH Before Compile
@@ -240,7 +241,7 @@ jobs:
         cd openwrt
         echo -e "Initiate Compilation. Try $(($(nproc)+1)) thread first..."
         make -j $(($(nproc)+1)) || make -j1 || make -j1 V=s.
-        echo "TimeStamp=$(date +"%Y%m%d-%H%M")" >> $GITHUB_ENV
+        echo "TimeStamp=$(date +"%Y%m%d-%H%M")" >> $GITHUB_OUTPUT
         # 复制配置文件到 bin/targets/[arch]/[subtarget]/ 目录，最终一并打包
         SUBTARGET_FOLDER=$(realpath bin/targets/*/*)
         cp -v .config ${SUBTARGET_FOLDER}/
@@ -311,7 +312,7 @@ jobs:
       uses: actions/upload-artifact@main
       if: steps.compile.conclusion == 'success' && env.UPLOAD_BIN_DIR == 'true'
       with:
-        name: OpenWrt_bin_${{ env.DEVICE_NAME }}_${{ env.TimeStamp }}
+        name: OpenWrt_bin_${{ steps.download.outputs.DEVICE_NAME }}_${{ steps.compile.outputs.TimeStamp }}
         path: openwrt/bin
 
     - name: Organize Files
@@ -320,12 +321,11 @@ jobs:
       run: |
         cd openwrt/bin/targets/*/*
         rm -rf packages
-        echo "FIRMWARE=$PWD" >> $GITHUB_ENV
+        echo "FIRMWARE_DIR=$PWD" >> $GITHUB_OUTPUT
 
     - name: Upload Firmware Directory
       uses: actions/upload-artifact@main
       if: steps.organize.conclusion == 'success' && !cancelled()
       with:
-        name: OpenWrt_firmware_${{ env.DEVICE_NAME }}_${{ env.TimeStamp }}
-        path: ${{ env.FIRMWARE }}
-
+        name: OpenWrt_firmware_${{ steps.download.outputs.DEVICE_NAME }}_${{ steps.compile.outputs.TimeStamp }}
+        path: ${{ steps.organize.outputs.FIRMWARE_DIR }}
