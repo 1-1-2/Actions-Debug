@@ -10,37 +10,56 @@
 # Description: OpenWrt DIY script part 2 (After Update feeds)
 #
 
+[ -z $REPO_TAG ] && echo '[diy-part2]找不到环境变量REPO_TAG' && exit 1
 # 载入闪存对应的DIY脚本
 sh_dir=$(dirname "$0")
-. $sh_dir/Configurator-openwrt-ARM.sh
+. "${sh_dir}/Configurator-${REPO_TAG}-ARM.sh"
 
-mod_default_config(){
+general_set(){
     #=========================================
-    # 三种类型：
+    # 两种方式：
     # C1： 修改 package/base-files/files/bin/config_generate 配置生成脚本
     # C2： 修改 luci 包默认配置
-    # C3： 添加默认 uci-default 脚本
     #=========================================
 
     # C1
-    echo '修改时区为东八区'
-    sed -i "s/'UTC'/'CST-8'\n        set system.@system[-1].zonename='Asia\/Shanghai'/g" package/base-files/files/bin/config_generate
+    # echo '修改后台地址为 192.168.199.1'
+    # sed -i 's/192.168.1.1/192.168.199.1/g' package/base-files/files/bin/config_generate
+    echo '修改后台地址获取方式为 dhcp'
+    sed -i '/config interface lan/,/^$/{s/static/dhcp/;/ipaddr/d;/netmask/d;}' target/linux/at91/base-files/etc/config/network
+    echo ==target/linux/at91/base-files/etc/config/network==
+    cat target/linux/at91/base-files/etc/config/network
+    echo ===================================================
 
-    echo '修改主机名为 ThunderCloud'
-    sed -i 's/OpenWrt/ThunderCloud/g' package/base-files/files/bin/config_generate
+    echo '修改主机名为 WS1408'
+    sed -i 's/OpenWrt/WS1408/g' package/base-files/files/bin/config_generate
 
     # C2
     echo '修改默认主题为老竭力的 argon'
     # sed -i 's/luci-theme-bootstrap/luci-theme-argonne/g' feeds/luci/collections/luci*/Makefile
     sed -i 's/bootstrap/argon/g' feeds/luci/modules/luci-base/root/etc/config/luci
+}
 
-    # C3
+lede_set(){
+    general_set
+}
+
+openwrt_set(){
+    general_set
+
+    echo '修改时区为东八区'
+    sed -i "s/'UTC'/'CST-8'\n        set system.@system[-1].zonename='Asia\/Shanghai'/g" package/base-files/files/bin/config_generate
+
     echo '添加 OpenWrt 默认设置文件'
     mkdir -p files/etc/uci-defaults
     cp -v "$sh_dir/[OpenWrt]CustomDefault.sh" files/etc/uci-defaults/99-Custom-Default
 }
 
-target_inf() {
+immortalwrt_set(){
+    general_set
+}
+
+lede_target() {
     echo -n '[diy-part2.sh]当前表显路径：' && pwd
     echo -n '[diy-part2.sh]当前物理路径：' && pwd -P
     #=========================================
@@ -50,9 +69,6 @@ target_inf() {
 CONFIG_TARGET_meson=y
 CONFIG_TARGET_meson_meson8b=y
 CONFIG_TARGET_meson_meson8b_DEVICE_thunder-onecloud=y
-CONFIG_TARGET_INITRAMFS_COMPRESSION_NONE=y
-CONFIG_TARGET_ROOTFS_INITRAMFS=y
-CONFIG_TARGET_ROOTFS_TARGZ=y
 EOF
 }
 
@@ -62,9 +78,28 @@ EOF
 
 add_packages
 # 清理重开，从零开始
-rm -fv ./.config*
-target_inf
-mod_default_config
+# rm -fv ./.config*
+# 根据源库选择target
+case "$REPO_TAG" in
+    "lede" ) lede_target
+        ;;
+    * ) echo "未定义${REPO_TAG}源"
+        exit 1
+        ;;
+esac
+
+# 根据源库做修改
+case "$REPO_TAG" in
+    "lede" ) lede_set
+        ;;
+    "openwrt" ) openwrt_set
+        ;;
+    "immortalwrt" ) immortalwrt_set
+        ;;
+    * ) echo "未定义${REPO_TAG}源，使用通用seting"
+        general_set
+        ;;
+esac
 
 # 根据输入参数增加内容
 if [[ $1 == clean* ]]; then
