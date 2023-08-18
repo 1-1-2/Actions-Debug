@@ -1,4 +1,4 @@
-name: Playground - SSH
+name: Playground - Just SSH
 
 on:
   workflow_dispatch:
@@ -60,7 +60,7 @@ jobs:
                 exit 0
             fi
         done
-        while [[ -n $(ps aux | grep ngrok) ]]; do
+        while [[ -n $(pgrep ngrok) ]]; do
             sleep 5
             echo
             if [[ -e "/tmp/continue" ]]; then

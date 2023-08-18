@@ -11,7 +11,7 @@
 # Description: 玩客云折腾记录（一）：编译 ArmBian 系统
 #
 
-name: Experiment - Amlogic Testbed
+name: Playground - Amlogic Testbed
 
 on:
   workflow_dispatch:
@@ -23,7 +23,7 @@ jobs:
       log_dir: /workdir/setup_logs
 
     steps:
-    - name: Initialize
+    - name: Initialize Toolkits
       run: |
         sudo -E apt-get -y -qq install git build-essential zlib1g-dev liblzma-dev python-magic binwalk
 
@@ -60,34 +60,72 @@ jobs:
         df -hT $PWD
         # ln -sf /workdir/armbian $GITHUB_WORKSPACE/armbian
 
+    - name: Start SSH via ngrok
+      id: ssh
+      uses: 1-1-2/SSH2Actions@main
+      with:
+        mode: ngrok
+      env:
+        IN_BACKGROUND: true
+        # jp, ap, us
+        NGROK_REGION: jp
+        NGROK_TOKEN: ${{ secrets.NGROK_TOKEN }}
+        SSH_PASSWORD: ${{ secrets.SSH_PASSWORD }}
+
     - name: Prepare Web Service
       working-directory: /workdir
       run: |
-        # cd /workdir
-
-        # add npc
-        curl -fsSL https://github.com/ehang-io/nps/releases/download/v0.26.10/linux_amd64_client.tar.gz | tar -zx npc
+        # npc?
+        # n2n?
         
         # add file-transfer
         curl -fsSL git.io/file-transfer | sh 2>&1 | tee ${log_dir}/file-transfer.log
 
-        # 安装 filebrowser
+        # 安装 filebrowser，端口80，工作目录/workdir
         curl -fsSL https://raw.githubusercontent.com/filebrowser/get/master/get.sh | sudo bash
-        # 创建配置数据库
         filebrowser -d ~/filebrowser.db config init
-        # 设置监听地址和端口，语言和日志位置
         filebrowser -d ~/filebrowser.db config set --address 127.0.0.1 --port 80 --locale zh-cn --log /var/log/filebrowser.log
-        # 设置根目录
         filebrowser -d ~/filebrowser.db config set --root /workdir
-        # 添加用户
         filebrowser -d ~/filebrowser.db users add actions impassword --perm.admin
-        # 启动服务
-        echo
         echo '启动并将 filebrowser 挂在后台'
         nohup filebrowser -d ~/filebrowser.db &
 
-    - name: enable SSH
-      uses: mxschmitt/action-tmate@v3.11
+    - uses: debugci/setup-cloudflared@v1
+    - name: Start tunnel @ trycloudflare
+      run: |
+        nohup cloudflared tunnel --url http://localhost:80 > ${log_dir}/cloudflared.log 2&>1 &
 
-    - name: Delete workflow runs
-      uses: GitRML/delete-workflow-runs@main
+        time=0
+        while [ ! `grep -q 'trycloudflare' ${log_dir}/cloudflared.log` ]; do
+          ((time++))
+          if [[ time -gt 20 ]]; then
+            echo 'cloudflared可能出错了'
+            break
+          else
+            echo '等待tunnel上线'
+            sleep 1
+          fi
+        done
+
+        echo "====================连接信息如下===================="
+        grep --color 'trycloudflare' ${log_dir}/cloudflared.log
+        echo "==================================================="
+
+    - name: Keepalive
+      run: |
+        # while [[ -S ${TMATE_SOCK} ]]; do
+        #     sleep 5
+        #     echo
+        #     if [[ -e "/tmp/continue" ]]; then
+        #         echo -e "[INFO] Continue to the next step."
+        #         exit 0
+        #     fi
+        # done
+        while [[ -n $(pgrep ngrok) ]]; do
+            sleep 5
+            echo
+            if [[ -e "/tmp/continue" ]]; then
+                echo -e "[INFO] Continue to the next step."
+                exit 0
+            fi
+        done

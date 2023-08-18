@@ -1,4 +1,4 @@
-name: Playground - Benchmarks
+name: Test - Benchmarks
 
 on:
   workflow_dispatch:

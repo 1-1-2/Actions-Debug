@@ -1,4 +1,4 @@
-name: Playground - Action Artifacts
+name: Test - Action Artifacts
 
 on:
   workflow_dispatch:

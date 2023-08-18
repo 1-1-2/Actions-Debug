@@ -8,7 +8,7 @@
 # Description: OpenWrt Testbed with Toolchain loaded
 #
 
-name: Experiment - OpenWrt Testbed
+name: Playground - OpenWrt Testbed
 run-name: OpenWrt Testbed base on[${{ inputs.target }}, ${{ inputs.config_tag }}]
 
 on:
@@ -48,7 +48,7 @@ on:
         default: true
 
 env:
-  REPO_TAG: OpenWrt
+  REPO_TAG: openWrt
   REPO_USE: openwrt/openwrt
   REPO_BRANCH: master
   FEEDS_CONF: feeds.conf.default
@@ -113,10 +113,11 @@ jobs:
           echo "::notice title=Using commit::[specific] https://github.com/$REPO_USE/tree/${{ inputs.commit_sha }}"
         fi
 
-    - name: Cache
-      uses: klever1988/cachewrtbuild@main
+    - uses: stupidloud/cachewrtbuild@main
+      if: inputs.use_cache
       with:
         ccache: 'false'
+        mixkey: ${{ format('{0}x{1}', steps.download.outputs.ARCH_NAME, env.REPO_TAG) }}
         prefix: ${{ github.workspace }}/openwrt
 
     - name: Load custom feeds
@@ -140,7 +141,7 @@ jobs:
         fi
         [ -e $CONFIG_FILE ] && mv -v $CONFIG_FILE openwrt/.config
 
-        DIY_P2_SH="diy-part2/[$REPO_TAG]${{ github.event.inputs.target }}-part2.sh"
+        DIY_P2_SH="diy-part2/${{ github.event.inputs.target }}-part2.sh"
         chmod +x "${DIY_P2_SH}"
         cd openwrt
         # 调用脚本生成配置
@@ -211,7 +212,7 @@ jobs:
         #         exit 0
         #     fi
         # done
-        while [[ -n $(ps aux | grep ngrok) ]]; do
+        while [[ -n $(pgrep ngrok) ]]; do
             sleep 5
             echo
             if [[ -e "/tmp/continue" ]]; then

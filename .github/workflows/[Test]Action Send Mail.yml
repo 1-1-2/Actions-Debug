@@ -1,4 +1,4 @@
-name: Mailll
+name: Test - Mail Action
 
 on:
   workflow_dispatch:

@@ -6,7 +6,7 @@
 # Description: Build nps/npc for mipsle(softfloat) using GitHub Actions
 #
 
-name: Build ehang-io/nps bin_only
+name: Build ehang-io/nps
 
 on:
   workflow_dispatch:
@@ -41,20 +41,20 @@ jobs:
         # sudo apt-get update
         # sudo apt-get install gcc-mingw-w64-i686 gcc-multilib
 
-        # echo 'Loading upx binary'
-        # wget https://github.com/upx/upx/releases/download/v3.96/upx-3.96-amd64_linux.tar.xz
-        # tar -xvf upx-3.96-amd64_linux.tar.xz
-        # cp upx-3.96-amd64_linux/upx ./
+        echo 'Loading upx binary'
+        wget https://github.com/upx/upx/releases/download/v3.96/upx-3.96-amd64_linux.tar.xz
+        tar -xvf upx-3.96-amd64_linux.tar.xz
+        cp upx-3.96-amd64_linux/upx ./
 
         echo 'Building npc for mipsle softfloat'
         CGO_ENABLED=0 GOOS=linux GOARCH=mipsle GOMIPS=softfloat go build -trimpath -ldflags "-s -w -extldflags -static -extldflags -static" ./cmd/npc/npc.go
-        # upx -9 npc
-        # tar -czvf linux_mipsle_client.tar.gz npc conf/npc.conf conf/multi_account.conf
+        upx -9 npc
+        tar -czvf linux_mipsle_client.tar.gz npc conf/npc.conf conf/multi_account.conf
 
         echo 'Building nps for mipsle softfloat'
         CGO_ENABLED=0 GOOS=linux GOARCH=mipsle GOMIPS=softfloat go build -trimpath -ldflags "-s -w -extldflags -static -extldflags -static" ./cmd/nps/nps.go
-        # upx -9 nps
-        # tar -czvf linux_mipsle_server.tar.gz nps conf/nps.conf conf/tasks.json conf/clients.json conf/hosts.json conf/server.key  conf/server.pem web/views web/static
+        upx -9 nps
+        tar -czvf linux_mipsle_server.tar.gz conf/nps.conf conf/tasks.json conf/clients.json conf/hosts.json conf/server.key  conf/server.pem web/views web/static nps
 
         ls -lah
         echo '==========colleting artifact(s)=========='
