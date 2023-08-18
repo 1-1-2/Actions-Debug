@@ -26,8 +26,8 @@ general_set(){
     echo '修改后台地址为 192.168.199.1'
     sed -i 's/192.168.1.1/192.168.199.1/g' package/base-files/files/bin/config_generate
 
-    echo '修改主机名为 N3D2'
-    sed -i 's/OpenWrt/N3D2/g' package/base-files/files/bin/config_generate
+    echo '修改主机名为 JDC_Mark1'
+    sed -i 's/OpenWrt/JDC_Mark1/g' package/base-files/files/bin/config_generate
 
     # C2
     echo '修改默认主题为老竭力的 argon'
@@ -55,15 +55,38 @@ immortalwrt_set(){
 }
 
 target_inf() {
+    echo -e '\n=====================检查路径======================='
     echo -n '[diy-part2.sh]当前表显路径：' && pwd
     echo -n '[diy-part2.sh]当前物理路径：' && pwd -P
+    #=========================================
+    # Patch for model RE-SP-01B
+    #=========================================
+    gist_base='https://gist.githubusercontent.com/1-1-2/335dbc8e138f39fb8fe6243d424fe476/raw'
+
+    # load dts
+    echo '[+TARGET] 载入 mt7621_jdcloud_re-sp-01b.dts'
+    curl --retry 3 -s --globoff "${gist_base}/mt7621_jdcloud_re-sp-01b.dts" -o target/linux/ramips/dts/mt7621_jdcloud_re-sp-01b.dts
+    ls -l target/linux/ramips/dts/mt7621_jdcloud_re-sp-01b.dts
+
+    # fix2 + fix4.2
+    echo '[+TARGET] 应用 mt7621.mk.re-sp-01b.patch'
+    curl --retry 3 -s "${gist_base}/mt7621.mk.re-sp-01b.patch" | patch target/linux/ramips/image/mt7621.mk
+    
+    # fix3 + fix5.2
+    echo '[+TARGET] 应用 02_network.re-sp-01b.patch'
+    curl --retry 3 -s "${gist_base}/02_network.re-sp-01b.patch" | patch target/linux/ramips/mt7621/base-files/etc/board.d/02_network
+    
+    # fix5.1
+    echo '[+TARGET] 应用 system.sh.re-sp-01b.patch'
+    curl --retry 3 -s "${gist_base}/system.sh.re-sp-01b.patch" | patch package/base-files/files/lib/functions/system.sh
+
     #=========================================
     # Target System
     #=========================================
     cat >> .config << EOF
 CONFIG_TARGET_ramips=y
 CONFIG_TARGET_ramips_mt7621=y
-CONFIG_TARGET_ramips_mt7621_DEVICE_d-team_newifi-d2=y
+CONFIG_TARGET_ramips_mt7621_DEVICE_jdcloud_re-sp-01b=y
 EOF
 }
 

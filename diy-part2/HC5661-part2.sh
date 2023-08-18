@@ -13,7 +13,7 @@
 [ -z $REPO_TAG ] && echo '[diy-part2]找不到环境变量REPO_TAG' && exit 1
 # 载入闪存对应的DIY脚本
 sh_dir=$(dirname "$0")
-. "${sh_dir}/Configurator-${REPO_TAG}-32M.sh"
+. "${sh_dir}/Configurator-${REPO_TAG}-16M.sh"
 
 general_set(){
     #=========================================
@@ -26,8 +26,8 @@ general_set(){
     echo '修改后台地址为 192.168.199.1'
     sed -i 's/192.168.1.1/192.168.199.1/g' package/base-files/files/bin/config_generate
 
-    echo '修改主机名为 N3D2'
-    sed -i 's/OpenWrt/N3D2/g' package/base-files/files/bin/config_generate
+    echo '修改主机名'
+    sed -i 's/OpenWrt/Gee_1s/g' package/base-files/files/bin/config_generate
 
     # C2
     echo '修改默认主题为老竭力的 argon'
@@ -62,8 +62,8 @@ target_inf() {
     #=========================================
     cat >> .config << EOF
 CONFIG_TARGET_ramips=y
-CONFIG_TARGET_ramips_mt7621=y
-CONFIG_TARGET_ramips_mt7621_DEVICE_d-team_newifi-d2=y
+CONFIG_TARGET_ramips_mt7620=y
+CONFIG_TARGET_ramips_mt7620_DEVICE_hiwifi_hc5661=y
 EOF
 }
 

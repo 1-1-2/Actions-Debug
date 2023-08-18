@@ -23,11 +23,16 @@ general_set(){
     #=========================================
 
     # C1
-    echo '修改后台地址为 192.168.199.1'
-    sed -i 's/192.168.1.1/192.168.199.1/g' package/base-files/files/bin/config_generate
+    # echo '修改后台地址为 192.168.199.1'
+    # sed -i 's/192.168.1.1/192.168.199.1/g' package/base-files/files/bin/config_generate
+    echo '修改后台地址获取方式为 dhcp'
+    sed -i '/config interface lan/,/^$/{s/static/dhcp/;/ipaddr/d;/netmask/d;}' target/linux/at91/base-files/etc/config/network
+    echo ==target/linux/at91/base-files/etc/config/network==
+    cat target/linux/at91/base-files/etc/config/network
+    echo ===================================================
 
-    echo '修改主机名为 N3D2'
-    sed -i 's/OpenWrt/N3D2/g' package/base-files/files/bin/config_generate
+    echo '修改主机名为 WS1408'
+    sed -i 's/OpenWrt/WS1408/g' package/base-files/files/bin/config_generate
 
     # C2
     echo '修改默认主题为老竭力的 argon'
@@ -50,20 +55,29 @@ openwrt_set(){
     cp -v "$sh_dir/[OpenWrt]CustomDefault.sh" files/etc/uci-defaults/99-Custom-Default
 }
 
-immortalwrt_set(){
-    general_set
-}
-
-target_inf() {
+general_target() {
     echo -n '[diy-part2.sh]当前表显路径：' && pwd
     echo -n '[diy-part2.sh]当前物理路径：' && pwd -P
     #=========================================
     # Target System
     #=========================================
     cat >> .config << EOF
-CONFIG_TARGET_ramips=y
-CONFIG_TARGET_ramips_mt7621=y
-CONFIG_TARGET_ramips_mt7621_DEVICE_d-team_newifi-d2=y
+CONFIG_TARGET_at91=y
+CONFIG_TARGET_at91_sama5=y
+CONFIG_TARGET_at91_sama5_DEVICE_microchip_sama5d3-xplained=y
+EOF
+}
+
+lede_target() {
+    echo -n '[diy-part2.sh]当前表显路径：' && pwd
+    echo -n '[diy-part2.sh]当前物理路径：' && pwd -P
+    #=========================================
+    # Target System
+    #=========================================
+    cat >> .config << EOF
+CONFIG_TARGET_meson=y
+CONFIG_TARGET_meson_meson8b=y
+CONFIG_TARGET_meson_meson8b_DEVICE_odroid-c1=y
 EOF
 }
 
@@ -74,7 +88,14 @@ EOF
 add_packages
 # 清理重开，从零开始
 # rm -fv ./.config*
-target_inf
+# 根据源库选择target
+case "$REPO_TAG" in
+    "lede" ) lede_target
+        ;;
+    * ) echo "未定义${REPO_TAG}源，使用通用target selection"
+        general_target
+        ;;
+esac
 
 # 根据源库做修改
 case "$REPO_TAG" in
