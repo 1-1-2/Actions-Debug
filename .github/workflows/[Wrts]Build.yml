@@ -12,7 +12,6 @@ name: Build WRTs
 run-name: ${{ inputs.CONFIG_FILENAME != '' && format('{0}[{1}@{2}]', inputs.CONFIG_FILENAME, inputs.repo_choice, inputs.commit_sha) || format('{0}[{1}@{2},{3}]', inputs.target_choice, inputs.repo_choice, inputs.commit_sha, inputs.config_tag) }}
 
 on:
-  repository_dispatch:
   workflow_dispatch:
     inputs:
       repo_choice:
@@ -76,6 +75,11 @@ on:
         required: false
         default: false
         type: boolean
+      enable_n2n:
+        description: '开启n2n'
+        required: false
+        default: false
+        type: boolean
 
 env:
   REPO_USE: ${{ inputs.repo_choice }}
@@ -105,6 +109,16 @@ jobs:
         sudo timedatectl set-timezone "$TZ"
         sudo mkdir -p /workdir
         sudo chown $USER:$GROUPS /workdir
+
+    - name: Start n2n
+      id: n2n
+      if: inputs.enable_n2n
+      uses: 1-1-2/SSH2Actions@main
+      with:
+        mode: n2n
+      env:
+        N2N_ARG: ${{ secrets.N2N_ARG }}
+        SSH_PASSWORD: ${{ secrets.SSH_PASSWORD }}
 
     - name: Clone Source Code
       id: clone
@@ -281,23 +295,32 @@ jobs:
         NGROK_TOKEN: ${{ secrets.NGROK_TOKEN }}
         SSH_PASSWORD: ${{ secrets.SSH_PASSWORD }}
 
-    - name: Keepalive Durint SSH
+    - name: Keepalive During SSH
       run: |
-        # while [[ -S ${TMATE_SOCK} ]]; do
-        #     sleep 5
-        #     echo
-        #     if [[ -e "/tmp/continue" ]]; then
-        #         echo -e "[INFO] Continue to the next step."
-        #         exit 0
-        #     fi
-        # done
+        elapse() {
+          if [[ -e "/tmp/continue" ]]; then
+              echo -e "[INFO] Continue to the next step."
+              exit 0
+          fi
+          echo "[INFO] $1 online, 'touch /tmp/continue' to continue."
+          sleep 5
+        }
+
+        while [[ -S /tmp/tmate.sock ]]; do
+            elapse Tmate
+        done
+
         while [[ -n $(pgrep ngrok) ]]; do
-            sleep 5
-            echo '[INFO] SSH online, `touch /tmp/continue` to continue.'
-            if [[ -e "/tmp/continue" ]]; then
-                echo -e "[INFO] Continue to the next step."
-                exit 0
-            fi
+            elapse Ngrok-ssh
+        done
+
+        while [[ -e "/tmp/keepalive" ]]; do
+          if [[ -n $(pgrep edge) ]]; then
+              echo -e "[INFO] Continue to the next step."
+              exit 0
+          fi
+          echo "[INFO] $1 online, 'rm /tmp/keepalive' to continue."
+          sleep 5
         done
 
     - name: Check Disk Usage
