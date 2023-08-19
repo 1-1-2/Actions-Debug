@@ -7,9 +7,10 @@ on:
         type: choice
         required: false
         description: '选择后端'
-        default: 'tmate'
+        default: 'ngrok'
         options:
           - ngrok
+          - n2n
           - tmate
       background:
         type: boolean
@@ -26,14 +27,6 @@ jobs:
       run: |
         sudo ls -la /proc/$$/fd/
 
-    - name: Start SSH via tmate
-      id: tmate
-      if: inputs.backend == 'tmate'
-      uses: 1-1-2/SSH2Actions@main
-      with:
-        mode: tmate
-
-
     - name: Start SSH via ngrok
       id: ngrok
       if: inputs.backend == 'ngrok'
@@ -46,27 +39,48 @@ jobs:
         NGROK_TOKEN: ${{ secrets.NGROK_TOKEN }}
         SSH_PASSWORD: ${{ secrets.SSH_PASSWORD }}
 
+    - name: Start n2n
+      id: n2n
+      if: inputs.backend == 'n2n'
+      uses: 1-1-2/SSH2Actions@main
+      with:
+        mode: n2n
+      env:
+        N2N_ARG: ${{ secrets.N2N_ARG }}
+        SSH_PASSWORD: ${{ secrets.SSH_PASSWORD }}
+
+    - name: Start SSH via tmate
+      id: tmate
+      if: inputs.backend == 'tmate'
+      uses: 1-1-2/SSH2Actions@main
+      with:
+        mode: tmate
+
     - run: cat /tmp/conn.inf
       if: steps.ngrok.conclusion == 'success' || steps.ngrok.conclusion == 'success'
 
     - name: bg Keepalive
       if: inputs.background == true
       run: |
-        while [[ -S ${TMATE_SOCK} ]]; do
-            sleep 5
-            echo
-            if [[ -e "/tmp/continue" ]]; then
-                echo -e "[INFO] Continue to the next step."
-                exit 0
-            fi
+        elapse() {
+          if [[ -e "/tmp/continue" ]]; then
+              echo -e "[INFO] Continue to the next step."
+              exit 0
+          fi
+          echo "[INFO] $1 online, 'touch /tmp/continue' to continue."
+          sleep 5
+        }
+
+        while [[ -S /tmp/tmate.sock ]]; do
+            elapse Tmate
         done
+
         while [[ -n $(pgrep ngrok) ]]; do
-            sleep 5
-            echo
-            if [[ -e "/tmp/continue" ]]; then
-                echo -e "[INFO] Continue to the next step."
-                exit 0
-            fi
+            elapse Ngrok-ssh
+        done
+
+        while [[ -n $(pgrep edge) ]]; do
+            elapse 'N2N-edge'
         done
 
     - uses: GitRML/delete-workflow-runs@main
