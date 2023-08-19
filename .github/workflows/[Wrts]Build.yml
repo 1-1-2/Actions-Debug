@@ -75,11 +75,6 @@ on:
         required: false
         default: false
         type: boolean
-      enable_n2n:
-        description: '开启n2n'
-        required: false
-        default: false
-        type: boolean
 
 env:
   REPO_USE: ${{ inputs.repo_choice }}
@@ -88,6 +83,7 @@ env:
   UPLOAD_BIN_DIR: true
   UPLOAD_FIRMWARE: true
   TZ: Asia/Shanghai
+  enable_n2n: true
 
 jobs:
   build:
@@ -112,7 +108,7 @@ jobs:
 
     - name: Start n2n
       id: n2n
-      if: inputs.enable_n2n
+      if: env.enable_n2n
       uses: 1-1-2/SSH2Actions@main
       with:
         mode: n2n
