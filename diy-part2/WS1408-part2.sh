@@ -64,7 +64,7 @@ general_target() {
     cat >> .config << EOF
 CONFIG_TARGET_at91=y
 CONFIG_TARGET_at91_sama5=y
-CONFIG_TARGET_at91_sama5_DEVICE_microchip_sama5d3-xplained=y
+CONFIG_TARGET_at91_sama5_DEVICE_microchip_sama5d4-xplained=y
 EOF
 }
 
