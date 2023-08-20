@@ -15,18 +15,33 @@ name: Playground - Amlogic Testbed
 
 on:
   workflow_dispatch:
+    inputs:
+      ssh_ngrok:
+        type: boolean
+        description: 'Ngrok-ssh'
+        default: true
+      ssh_tmate:
+        type: boolean
+        description: 'tmate'
+        default: false
+      use_n2n:
+        type: boolean
+        description: 'n2n'
+        default: false
 
 jobs:
-  build:
+  toolbox:
     runs-on: ubuntu-latest
     env:
       log_dir: /workdir/setup_logs
+      IN_BACKGROUND: true
 
     steps:
+    - name: Initialize Environment
+      run: sudo -E apt-get -y -qq install git build-essential zlib1g-dev liblzma-dev binwalk
+
     - name: Initialize Toolkits
       run: |
-        sudo -E apt-get -y -qq install git build-essential zlib1g-dev liblzma-dev python-magic binwalk
-
         sudo mkdir -p ${log_dir}
         sudo chown -R $USER:$GROUPS /workdir
         cd /workdir
@@ -34,98 +49,126 @@ jobs:
         # cd /workdir
         ( git clone https://github.com/rampageX/firmware-mod-kit
           cd firmware-mod-kit/src
-          ( (./configure && make) | tee ${log_dir}/fmk.log) 3>&1 1>&2 2>&3 | tee ${log_dir}/fmk.err.log
+          (./configure && make) 2> >(tee ${log_dir}/fmk.log) 1> >(tee ${log_dir}/fmk.err)
         ) &
 
         # cd /workdir
         ( git clone https://github.com/natinusala/linux-amlogic-toolkit amlogic-toolkit-natinusala
           cd amlogic-toolkit-natinusala
-          ( ./bin/build | tee ${log_dir}/amlkit-natinusala.log ) 3>&1 1>&2 2>&3 | tee ${log_dir}/amlkit-natinusala.err.log
+          ./bin/build 2> >(tee ${log_dir}/amlkit-natinusala.log) 2 >(tee ${log_dir}/amlkit-natinusala.err)
         ) &
 
         # cd /workdir
         ( git clone https://github.com/Eliminater74/linux-amlogic-toolkit amlogic-toolkit-Eliminater74
           cd amlogic-toolkit-Eliminater74
-          ( ./bin/build | tee ${log_dir}/amlkit-Eliminater74.log ) 3>&1 1>&2 2>&3 | tee ${log_dir}/amlkit-Eliminater74.err.log
+          ./bin/build 2> >(tee ${log_dir}/amlkit-Eliminater74.log) 2 >(tee ${log_dir}/amlkit-Eliminater74.err)
         ) &
 
         # cd /workdir
         ( git clone https://github.com/syvaidya/linux-amlogic-toolkit amlogic-toolkit-syvaidya
           cd amlogic-toolkit-syvaidya
-          ( ./bin/build | tee ${log_dir}/amlkit-syvaidya.log ) 3>&1 1>&2 2>&3 | tee ${log_dir}/amlkit-syvaidya.err.log
+          ./bin/build 2> >(tee ${log_dir}/amlkit-syvaidya.log) 2 >(tee ${log_dir}/amlkit-syvaidya.err)
         ) &
 
         wait
 
-        df -hT $PWD
-        # ln -sf /workdir/armbian $GITHUB_WORKSPACE/armbian
-
-    - name: Start SSH via ngrok
-      id: ssh
-      uses: 1-1-2/SSH2Actions@main
-      with:
-        mode: ngrok
-      env:
-        IN_BACKGROUND: true
-        # jp, ap, us
-        NGROK_REGION: jp
-        NGROK_TOKEN: ${{ secrets.NGROK_TOKEN }}
-        SSH_PASSWORD: ${{ secrets.SSH_PASSWORD }}
-
-    - name: Prepare Web Service
+    - name: Initialize Web Service
       working-directory: /workdir
       run: |
         # npc?
-        # n2n?
         
-        # add file-transfer
+        # install file-transfer
         curl -fsSL git.io/file-transfer | sh 2>&1 | tee ${log_dir}/file-transfer.log
 
-        # 安装 filebrowser，端口80，工作目录/workdir
+        echo '安装 filebrowser，端口80，工作目录/workdir'
         curl -fsSL https://raw.githubusercontent.com/filebrowser/get/master/get.sh | sudo bash
         filebrowser -d ~/filebrowser.db config init
-        filebrowser -d ~/filebrowser.db config set --address 127.0.0.1 --port 80 --locale zh-cn --log /var/log/filebrowser.log
+        filebrowser -d ~/filebrowser.db config set --address 0.0.0.0 --port 80 --locale zh-cn --log /var/log/filebrowser.log
         filebrowser -d ~/filebrowser.db config set --root /workdir
-        filebrowser -d ~/filebrowser.db users add actions impassword --perm.admin
+        filebrowser -d ~/filebrowser.db users add a a --perm.admin
         echo '启动并将 filebrowser 挂在后台'
         nohup filebrowser -d ~/filebrowser.db &
 
     - uses: debugci/setup-cloudflared@v1
     - name: Start tunnel @ trycloudflare
       run: |
-        nohup cloudflared tunnel --url http://localhost:80 > ${log_dir}/cloudflared.log 2&>1 &
+        nohup sudo cloudflared tunnel --url http://localhost:80 &> ${log_dir}/cloudflared.log &
+        
+        SECONDS_LEFT=20
+        echo -e "[INFO] Please allow up to ${SECONDS_LEFT}s ..."
+        while true; do
+          grep -Pq 'https://.*trycloudflare.com' ${log_dir}/cloudflared.log && break
 
-        time=0
-        while [ ! `grep -q 'trycloudflare' ${log_dir}/cloudflared.log` ]; do
-          ((time++))
-          if [[ time -gt 20 ]]; then
-            echo 'cloudflared可能出错了'
+          if [[ $SECONDS_LEFT -le 0 ]]; then
+            echo 'cloudflared 可能出错了'
+            cat ${log_dir}/cloudflared.log
             break
           else
-            echo '等待tunnel上线'
+            echo -e "${INFO} Please wait ${SECONDS_LEFT}s ..."
             sleep 1
+            SECONDS_LEFT=$((${SECONDS_LEFT} - 1))
           fi
         done
 
-        echo "====================连接信息如下===================="
-        grep --color 'trycloudflare' ${log_dir}/cloudflared.log
-        echo "==================================================="
+        if [[ $SECONDS_LEFT -gt 0 ]]; then
+          echo "====================连接信息如下===================="
+          grep --color -P 'https://.*trycloudflare.com' ${log_dir}/cloudflared.log
+          echo "==================================================="
+        fi
+
+        echo 'go on'
+
+
+    - name: Start n2n
+      id: n2n
+      if: inputs.use_n2n
+      uses: 1-1-2/SSH2Actions@main
+      with:
+        mode: n2n
+      env:
+        N2N_ARG: ${{ secrets.N2N_ARG }}
+        SSH_PASSWORD: ${{ secrets.SSH_PASSWORD }}
+
+    - name: Start SSH via ngrok
+      id: ngrok
+      if: inputs.ssh_ngrok
+      uses: 1-1-2/SSH2Actions@main
+      with:
+        mode: ngrok
+      env:
+        # jp, ap, us
+        NGROK_REGION: jp
+        NGROK_TOKEN: ${{ secrets.NGROK_TOKEN }}
+        SSH_PASSWORD: ${{ secrets.SSH_PASSWORD }}
+
+    - name: Start SSH via tmate
+      id: tmate
+      if: inputs.ssh_tmate
+      uses: 1-1-2/SSH2Actions@main
+      with:
+        mode: tmate
 
     - name: Keepalive
       run: |
-        # while [[ -S ${TMATE_SOCK} ]]; do
-        #     sleep 5
-        #     echo
-        #     if [[ -e "/tmp/continue" ]]; then
-        #         echo -e "[INFO] Continue to the next step."
-        #         exit 0
-        #     fi
-        # done
+        df -hT $PWD
+
+        elapse() {
+          if [[ -e "/tmp/continue" ]]; then
+              echo -e "[INFO] Continue to the next step."
+              exit 0
+          fi
+          echo "[INFO] $1 online, 'touch /tmp/continue' to continue."
+          sleep 5
+        }
+
+        while [[ -S /tmp/tmate.sock ]]; do
+            elapse Tmate
+        done
+
         while [[ -n $(pgrep ngrok) ]]; do
-            sleep 5
-            echo
-            if [[ -e "/tmp/continue" ]]; then
-                echo -e "[INFO] Continue to the next step."
-                exit 0
-            fi
+            elapse Ngrok-ssh
+        done
+
+        while [[ -n $(pgrep edge) ]]; do
+            elapse 'N2N-edge'
         done
