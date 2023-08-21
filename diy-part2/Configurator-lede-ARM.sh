@@ -24,6 +24,12 @@ modification() {
     # 一些可能必要的修改
     echo '[MOD]除去 luci-app-dockerman 的架构限制'
     find -type f -path '*/luci-lib-docker/Makefile' -print -exec sed -i 's#@(aarch64||arm||x86_64)##w /dev/stdout' {} \;
+    
+    # ref: https://pylblog.com/post/255.html
+    echo "[FIX]linux 内核补丁"
+    echo '增加 CONFIG_ARM_CRYPTO=y'
+    find target/linux/meson/meson8b -type f -name "config*" -print -exec sed -i '$aCONFIG_ARM_CRYPTO=y' {} \;
+    echo
 }
 
 add_packages(){
