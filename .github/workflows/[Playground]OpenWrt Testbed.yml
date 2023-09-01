@@ -46,6 +46,23 @@ on:
         type: boolean
         description: '预编译toolchain'
         default: true
+      use_cache:
+        description: '尝试使用缓存的tool和toolchain'
+        required: false
+        default: true
+        type: boolean
+      ssh_ngrok:
+        type: boolean
+        description: 'Ngrok-ssh'
+        default: false
+      ssh_tmate:
+        type: boolean
+        description: 'tmate'
+        default: false
+      use_n2n:
+        type: boolean
+        description: 'n2n'
+        default: true
 
 env:
   REPO_TAG: openWrt
@@ -60,10 +77,21 @@ env:
 jobs:
   testbed:
     runs-on: ubuntu-latest
-
+    env:
+      IN_BACKGROUND: true
     steps:
     - name: Checkout
       uses: actions/checkout@main
+
+    - name: Start n2n
+      id: n2n
+      if: inputs.use_n2n
+      uses: 1-1-2/SSH2Actions@main
+      with:
+        mode: n2n
+      env:
+        N2N_ARG: ${{ secrets.N2N_ARG }}
+        SSH_PASSWORD: ${{ secrets.SSH_PASSWORD }}
 
     - name: IP check
       run: wget -qO- --no-check-certificate https://raw.githubusercontent.com/spiritLHLS/ecs/main/qzcheck.sh | sudo bash -
@@ -81,18 +109,6 @@ jobs:
         sudo timedatectl set-timezone "$TZ"
         sudo mkdir -p /workdir
         sudo chown $USER:$GROUPS /workdir
-
-    - name: Start SSH via ngrok
-      id: ssh
-      uses: 1-1-2/SSH2Actions@main
-      with:
-        mode: ngrok
-      env:
-        IN_BACKGROUND: true
-        # jp, ap, us
-        NGROK_REGION: jp
-        NGROK_TOKEN: ${{ secrets.NGROK_TOKEN }}
-        SSH_PASSWORD: ${{ secrets.SSH_PASSWORD }}
 
     - name: Clone source code
       working-directory: /workdir
@@ -188,6 +204,25 @@ jobs:
         make -j $(($(nproc)+1)) toolchain/install || make -j1 toolchain/install || make -j1 V=s toolchain/install
         echo
 
+    - name: Start SSH via ngrok
+      id: ngrok
+      if: inputs.ssh_ngrok
+      uses: 1-1-2/SSH2Actions@main
+      with:
+        mode: ngrok
+      env:
+        # jp, ap, us
+        NGROK_REGION: jp
+        NGROK_TOKEN: ${{ secrets.NGROK_TOKEN }}
+        SSH_PASSWORD: ${{ secrets.SSH_PASSWORD }}
+
+    - name: Start SSH via tmate
+      id: tmate
+      if: inputs.ssh_tmate
+      uses: 1-1-2/SSH2Actions@main
+      with:
+        mode: tmate
+
     - name: Send notification mail
       uses: dawidd6/action-send-mail@v3
       with:
@@ -204,21 +239,27 @@ jobs:
 
     - name: Keepalive
       run: |
-        # while [[ -S ${TMATE_SOCK} ]]; do
-        #     sleep 5
-        #     echo
-        #     if [[ -e "/tmp/continue" ]]; then
-        #         echo -e "[INFO] Continue to the next step."
-        #         exit 0
-        #     fi
-        # done
+        df -hT $PWD
+
+        elapse() {
+          if [[ -e "/tmp/continue" ]]; then
+              echo -e "[INFO] Continue to the next step."
+              exit 0
+          fi
+          echo "[INFO] $1 online, 'touch /tmp/continue' to continue."
+          sleep 5
+        }
+
+        while [[ -S /tmp/tmate.sock ]]; do
+            elapse Tmate
+        done
+
         while [[ -n $(pgrep ngrok) ]]; do
-            sleep 5
-            echo
-            if [[ -e "/tmp/continue" ]]; then
-                echo -e "[INFO] Continue to the next step."
-                exit 0
-            fi
+            elapse Ngrok-ssh
+        done
+
+        while [[ -n $(pgrep edge) ]]; do
+            elapse 'N2N-edge'
         done
 
     - name: Check Space Usage
