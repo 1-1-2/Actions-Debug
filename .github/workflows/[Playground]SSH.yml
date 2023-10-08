@@ -1,4 +1,5 @@
 name: Playground - Just SSH
+run-name: SSH [${{ inputs.backend }}, BG ${{ inputs.background }}]
 
 on:
   workflow_dispatch:
