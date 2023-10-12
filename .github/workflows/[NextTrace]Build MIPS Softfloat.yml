@@ -1,0 +1,70 @@
+name: Build NextTrace MIPS with Softfloat
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      GOMIPS: softfloat
+      CGO_ENABLED: 0
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          repository: 'nxtrace/Ntrace-core'
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.21'
+
+      - name: Get project dependencies
+        run: go mod download
+
+      - name: Build
+        run: |
+          export THE_LDFLAGS="-X 'github.com/nxtrace/NTrace-core/config.Version=$(git describe --tags --always)' \
+                      -X 'github.com/nxtrace/NTrace-core/config.BuildDate=$(date -u +'%Y-%m-%dT%H:%M:%SZ')' \
+                      -X 'github.com/nxtrace/NTrace-core/config.CommitID=$(git rev-parse --short HEAD)' \
+                      -w -s"
+
+          echo 'Build for Linux MIPS 32-bit'
+          GOOS=linux GOARCH=mips go build -trimpath -ldflags "$THE_LDFLAGS" -o dist/ntrace_mips &
+
+          echo 'Build for Linux MIPS 64-bit'
+          GOOS=linux GOARCH=mips64 go build -trimpath -ldflags "$THE_LDFLAGS" -o dist/ntrace_mips64 &
+
+          echo 'Build for Linux MIPS LE 32-bit'
+          GOOS=linux GOARCH=mipsle go build -trimpath -ldflags "$THE_LDFLAGS" -o dist/ntrace_mipsle &
+
+          echo 'Build for Linux MIPS LE 64-bit'
+          GOOS=linux GOARCH=mips64le go build -trimpath -ldflags "$THE_LDFLAGS" -o dist/ntrace_mips64le &
+
+          wait
+          
+          mkdir -p compress
+          cp -fv dist/ntrace_mips dist/ntrace_mipsle compress/
+
+      - name: Compress
+        run: |
+          echo 'Loading upx 4.1.0'
+          wget https://github.com/upx/upx/releases/download/v4.1.0/upx-4.1.0-amd64_linux.tar.xz
+          tar -xvf upx-4.1.0-amd64_linux.tar.xz
+          sudo chmod a+x upx-4.1.0-amd64_linux/upx
+          sudo cp -fv upx-4.1.0-amd64_linux/upx /usr/bin/upx
+
+          ls -la dist compress
+
+          echo 'Compress the executable files using UPX'
+          upx --best --lzma compress/*
+          echo 'End Of Compress.'
+
+      - name: Upload files to Artifacts
+        uses: actions/upload-artifact@main
+        with:
+          name: NextTrace_MIPS_with_Softfloat
+          path: |
+            dist/*
+            compress/*
