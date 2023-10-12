@@ -30,6 +30,8 @@ jobs:
                       -X 'github.com/nxtrace/NTrace-core/config.CommitID=$(git rev-parse --short HEAD)' \
                       -w -s"
 
+          echo "$THE_LDFLAGS"
+
           echo 'Build for Linux MIPS 32-bit'
           GOOS=linux GOARCH=mips go build -trimpath -ldflags "$THE_LDFLAGS" -o dist/ntrace_mips &
 
@@ -43,6 +45,7 @@ jobs:
           GOOS=linux GOARCH=mips64le go build -trimpath -ldflags "$THE_LDFLAGS" -o dist/ntrace_mips64le &
 
           wait
+          uptime
           
           mkdir -p compress
           cp -fv dist/ntrace_mips dist/ntrace_mipsle compress/
@@ -58,7 +61,7 @@ jobs:
           ls -la dist compress
 
           echo 'Compress the executable files using UPX'
-          upx --best --lzma compress/*
+          upx --ultra-brute --no-lzma compress/*
           echo 'End Of Compress.'
 
       - name: Upload files to Artifacts
